@@ -1,19 +1,18 @@
 const express = require("express");
-const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const dotenv = require("dotenv");
 const connectDB = require("./config/db");
-require("dotenv").config();
+const authRoutes = require("./routes/auth.routes");
 
-connectDB();
-
+dotenv.config();
 const app = express();
-const PORT = process.env.PORT;
 
-app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
+app.use("/api/auth", authRoutes);
 
-const healthRoutes = require("./routes/health.routes");
-app.use("/health", healthRoutes);
-
-app.listen(PORT, () => {
-    console.log(`🚀 Server in ascolto su http://localhost:${PORT}`);
+connectDB().then(() => {
+    app.listen(3001, () => {
+        console.log("🚀 Server avviato su http://localhost:3001");
+    });
 });
