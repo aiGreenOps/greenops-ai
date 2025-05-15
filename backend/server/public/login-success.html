@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Login Success</title>
+</head>
+
+<body>
+    <h2>✅ Login completato con successo</h2>
+    <p>Token JWT ricevuto:</p>
+    <pre id="token-box">Caricamento...</pre>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get("token");
+
+        const box = document.getElementById("token-box");
+        if (token) {
+            box.textContent = token;
+
+            // opzionale: salva su localStorage per test futuri
+            localStorage.setItem("greenops-token", token);
+        } else {
+            box.textContent = "⚠️ Nessun token trovato.";
+        }
+    </script>
+</body>
+
+</html>

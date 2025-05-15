@@ -23,10 +23,12 @@
     "mongoose": "^8.14.3",
     "nodemailer": "^7.0.3",
     "passport": "^0.7.0",
+    "passport-discord": "^0.1.4",
     "passport-github2": "^0.1.12",
     "passport-google-oauth20": "^2.0.0",
     "passport-linkedin-oauth2": "^2.0.0",
     "passport-local": "^1.0.0",
+    "passport-slack": "^0.0.7",
     "qrcode": "^1.5.4",
     "serialport": "^13.0.0",
     "speakeasy": "^2.0.0"
