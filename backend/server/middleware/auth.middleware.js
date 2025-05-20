@@ -1,27 +1,44 @@
 const jwt = require("jsonwebtoken");
 const { jwtSecret } = require("../config/jwt.config");
 
-// Verifica token JWT
-exports.authenticate = (req, res, next) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith("Bearer ")) {
-        return res.status(401).json({ message: "Token mancante o non valido" });
-    }
+// Protegge le route dei manager (/api/auth/*)
+exports.protectManager = (req, res, next) => {
+    const token =
+        req.cookies.managerToken ||
+        (req.headers.authorization?.startsWith("Bearer ")
+            ? req.headers.authorization.split(" ")[1]
+            : null);
 
+    if (!token) {
+        return res.status(401).json({ message: "Manager non autenticato" });
+    }
     try {
-        const token = authHeader.split(" ")[1];
-        const decoded = jwt.verify(token, jwtSecret);
-        req.user = decoded; // contiene userId, role
+        req.user = jwt.verify(token, jwtSecret);
         next();
-    } catch (err) {
-        return res.status(401).json({ message: "Token non valido" });
+    } catch {
+        return res.status(401).json({ message: "Token manager non valido" });
     }
 };
 
-// Verifica ruolo (es. admin)
+// Protegge le route degli admin (/api/admin/*)
+exports.protectAdmin = (req, res, next) => {
+    const token = req.cookies.adminToken;
+    if (!token) {
+        return res.status(401).json({ message: "Admin non autenticato" });
+    }
+    try {
+        req.user = jwt.verify(token, jwtSecret);
+        next();
+    } catch {
+        return res.status(401).json({ message: "Token admin non valido" });
+    }
+};
+
+// (riusa il tuo requireRole per checking del ruolo)
+// es.
 exports.requireRole = (role) => (req, res, next) => {
     if (req.user.role !== role) {
-        return res.status(403).json({ message: "Accesso riservato agli admin" });
+        return res.status(403).json({ message: "Accesso negato" });
     }
     next();
 };

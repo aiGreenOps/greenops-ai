@@ -1,0 +1,33 @@
+.page {
+    padding: 2rem;
+}
+
+.inviteSection,
+.pendingSection {
+    margin-bottom: 2rem;
+}
+
+.userList {
+    list-style: none;
+    padding: 0;
+}
+
+.userItem {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.successBanner {
+    background: #e0f8e9;
+    color: #155724;
+    padding: .5rem;
+    margin-bottom: 1rem;
+}
+
+.errorBanner {
+    background: #f8d7da;
+    color: #721c24;
+    padding: .5rem;
+    margin-bottom: 1rem;
+}

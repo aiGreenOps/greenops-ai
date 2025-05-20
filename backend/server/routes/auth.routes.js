@@ -6,6 +6,10 @@ const { register } = require("../controllers/auth.controller");
 const { validateRequest } = require("../middleware/validate");
 const { verifyEmail } = require("../controllers/auth.controller");
 const { login } = require("../controllers/auth.controller");
+const { logout } = require("../controllers/auth.controller");
+const { me } = require("../controllers/auth.controller");
+const { logoutManager }  = require("../controllers/auth.controller");
+const { protectManager } = require("../middleware/auth.middleware");
 const jwt = require("jsonwebtoken");
 const { jwtSecret, jwtExpire } = require("../config/jwt.config");
 
@@ -18,6 +22,8 @@ router.post(
     validateRequest,
     login
 );
+
+router.post("/logout", protectManager, logoutManager);
 
 router.post(
     "/register",
@@ -41,17 +47,40 @@ router.get("/google", passport.authenticate("google", {
 }));
 
 // Callback da Google
-router.get("/google/callback",
+router.get(
+    "/google/callback",
     passport.authenticate("google", { session: false, failureRedirect: "/login-failed" }),
     (req, res) => {
-        const token = jwt.sign(
-            { userId: req.user._id, role: req.user.role },
-            jwtSecret,
-            { expiresIn: jwtExpire }
-        );
+        const token = jwt.sign({
+            userId: req.user._id,
+            role: req.user.role,
+            firstName: req.user.firstName,
+            lastName: req.user.lastName,
+            email: req.user.email
+        }, jwtSecret, { expiresIn: jwtExpire });
 
-        // redirect al frontend con il token JWT
-        res.redirect(`http://localhost:3001/login-success.html?token=${token}`);
+        const isAdmin = req.user.role === "admin";
+        const cookieName = isAdmin ? "adminToken" : "managerToken";
+
+        res.cookie(cookieName, token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 1000 * 60 * 60 * 24 * 7,
+        });
+
+        if (req.user.status === "pending") {
+            const io = req.app.get("io");
+            io.emit("newPendingUser", {
+                _id: req.user._id,
+                firstName: req.user.firstName,
+                lastName: req.user.lastName,
+                email: req.user.email,
+            });
+            res.redirect(`http://localhost:3000/auth/login?oauthStatus=${req.user.status}`);
+        } else {
+            res.redirect(`http://localhost:3000/dashboard/user`);
+        }
     }
 );
 
@@ -59,34 +88,84 @@ router.get("/google/callback",
 router.get("/github", passport.authenticate("github", { scope: ["user:email"] }));
 
 // Callback GitHub
-router.get("/github/callback",
+router.get(
+    "/github/callback",
     passport.authenticate("github", { session: false, failureRedirect: "/login-failed" }),
     (req, res) => {
-        const token = jwt.sign(
-            { userId: req.user._id, role: req.user.role },
-            jwtSecret,
-            { expiresIn: jwtExpire }
-        );
+        const token = jwt.sign({
+            userId: req.user._id,
+            role: req.user.role,
+            firstName: req.user.firstName,
+            lastName: req.user.lastName,
+            email: req.user.email
+        }, jwtSecret, { expiresIn: jwtExpire });
 
-        res.redirect(`http://localhost:3001/login-success.html?token=${token}`);
+
+        const isAdmin = req.user.role === "admin";
+        const cookieName = isAdmin ? "adminToken" : "managerToken";
+
+        res.cookie(cookieName, token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 1000 * 60 * 60 * 24 * 7,
+        });
+
+        if (req.user.status === "pending") {
+            const io = req.app.get("io");
+            io.emit("newPendingUser", {
+                _id: req.user._id,
+                firstName: req.user.firstName,
+                lastName: req.user.lastName,
+                email: req.user.email,
+            });
+            res.redirect(`http://localhost:3000/auth/login?oauthStatus=${req.user.status}`);
+        } else {
+            res.redirect(`http://localhost:3000/dashboard/user`);
+        }
     }
 );
 
 router.get("/discord", passport.authenticate("discord"));
 
-router.get("/discord/callback",
+router.get(
+    "/discord/callback",
     passport.authenticate("discord", { session: false, failureRedirect: "/login-failed" }),
     (req, res) => {
-        const token = jwt.sign(
-            { userId: req.user._id, role: req.user.role },
-            jwtSecret,
-            { expiresIn: jwtExpire }
-        );
+        const token = jwt.sign({
+            userId: req.user._id,
+            role: req.user.role,
+            firstName: req.user.firstName,
+            lastName: req.user.lastName,
+            email: req.user.email
+        }, jwtSecret, { expiresIn: jwtExpire });
 
-        res.redirect(`http://localhost:3001/login-success.html?token=${token}`);
+        const isAdmin = req.user.role === "admin";
+        const cookieName = isAdmin ? "adminToken" : "managerToken";
+
+        res.cookie(cookieName, token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 1000 * 60 * 60 * 24 * 7,
+        });
+
+        if (req.user.status === "pending") {
+            const io = req.app.get("io");
+            io.emit("newPendingUser", {
+                _id: req.user._id,
+                firstName: req.user.firstName,
+                lastName: req.user.lastName,
+                email: req.user.email,
+            });
+            res.redirect(`http://localhost:3000/auth/login?oauthStatus=${req.user.status}`);
+        } else {
+            res.redirect(`http://localhost:3000/dashboard/user`);
+        }
     }
 );
 
+router.get("/me", protectManager, me);
 
 
 module.exports = router;

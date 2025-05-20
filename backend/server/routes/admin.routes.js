@@ -1,37 +1,16 @@
+// routes/admin.routes.js
 const express = require("express");
 const router = express.Router();
-const { authenticate, requireRole } = require("../middleware/auth.middleware");
-const User = require("../models/user.model");
+const { requireRole, protectAdmin } = require("../middleware/auth.middleware");
+const adminCtrl = require("../controllers/admin.controller");
+const { logoutAdmin }  = require("../controllers/auth.controller");
 
-// GET utenti in attesa (pending)
-router.get("/users/pending", authenticate, requireRole("admin"), async (req, res) => {
-    const users = await User.find({ status: "pending" });
-    res.json(users);
-});
+router.post("/logout", protectAdmin, logoutAdmin);
 
-// PATCH approva utente
-router.patch("/users/:id/approve", authenticate, requireRole("admin"), async (req, res) => {
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ message: "Utente non trovato" });
-
-    user.status = "active";
-    await user.save();
-
-    res.json({ message: "Utente approvato" });
-});
-
-// PATCH rifiuta utente
-router.patch("/users/:id/reject", authenticate, requireRole("admin"), async (req, res) => {
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ message: "Utente non trovato" });
-
-    user.status = "rejected";
-    await user.save();
-
-    res.json({ message: "Utente rifiutato" });
-});
-
-router.get("/test", (req, res) => res.send("Admin API ok"));
-
+// tutte le route giù in ordine
+router.get("/users/pending", protectAdmin, requireRole("admin"), adminCtrl.getPending);
+router.patch("/users/:id/approve", protectAdmin, requireRole("admin"), adminCtrl.approve);
+router.patch("/users/:id/reject", protectAdmin, requireRole("admin"), adminCtrl.reject);
+router.post("/users/invite", protectAdmin, requireRole("admin"), adminCtrl.invite);
 
 module.exports = router;

@@ -14,8 +14,8 @@ passport.use(new DiscordStrategy({
     async (accessToken, refreshToken, profile, done) => {
         try {
             const email = profile.email || `${profile.id}@discord.fake`;
-
             let user = await User.findOne({ email });
+            let isNew = false;
 
             if (!user) {
                 user = await User.create({
@@ -29,8 +29,10 @@ passport.use(new DiscordStrategy({
                     authProvider: "discord",
                     providerId: profile.id
                 });
+                isNew = true;
             }
 
+            user._wasNew = isNew;
             return done(null, user);
         } catch (err) {
             return done(err, null);
@@ -48,6 +50,7 @@ passport.use(new GitHubStrategy({
         try {
             const email = profile.emails?.[0]?.value || `${profile.username}@github.fake`;
             let user = await User.findOne({ email });
+            let isNew = false;
 
             if (!user) {
                 user = await User.create({
@@ -61,8 +64,10 @@ passport.use(new GitHubStrategy({
                     authProvider: "github",
                     providerId: profile.id
                 });
+                isNew = true;
             }
 
+            user._wasNew = isNew;
             return done(null, user);
         } catch (err) {
             return done(err, null);
@@ -80,6 +85,7 @@ passport.use(new GoogleStrategy({
         try {
             const email = profile.emails?.[0]?.value;
             let user = await User.findOne({ email });
+            let isNew = false;
 
             if (!user) {
                 user = await User.create({
@@ -93,8 +99,10 @@ passport.use(new GoogleStrategy({
                     authProvider: "google",
                     providerId: profile.id
                 });
+                isNew = true;
             }
 
+            user._wasNew = isNew;
             return done(null, user);
         } catch (err) {
             return done(err, null);
