@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
+const speakeasy = require("speakeasy");
 const User = require("../models/user.model");
 const { jwtSecret, jwtExpire } = require("../config/jwt.config");
 
@@ -80,8 +81,8 @@ exports.register = async (req, res) => {
             subject: "Verifica il tuo indirizzo email",
             html: `
         <p>Ciao ${firstName},</p>
-        <p>Clicca qui per verificare la tua email:</p>
-        <a href="${verificationUrl}">${verificationUrl}</a>
+        <a href="${verificationUrl}">Clicca qui per verificare la tua email.</a>
+        <br>
         <p>Il link scade tra 15 minuti.</p>
       `,
         });
@@ -138,18 +139,15 @@ exports.verifyEmail = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-    const { email, password } = req.body;
-
+    const { email, password, deviceId } = req.body;
     const user = await User.findOne({ email });
 
     if (!user) {
         return res.status(401).json({ message: "Credenziali non valide" });
     }
-
     if (!user.emailVerified) {
         return res.status(403).json({ message: "Email non verificata" });
     }
-
     if (user.status !== "active") {
         return res.status(403).json({ message: "Utente non approvato dall'amministratore" });
     }
@@ -159,34 +157,93 @@ exports.login = async (req, res) => {
         return res.status(401).json({ message: "Credenziali non valide" });
     }
 
-    // in auth.controller.js, login e nei callback social
-    const token = jwt.sign({
-        userId: user._id,
-        role: user.role,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email
-    }, jwtSecret, { expiresIn: jwtExpire });
-
-    const isAdmin = user.role === "admin";
-    const cookieName = isAdmin ? "adminToken" : "managerToken";
-
-    res.cookie(cookieName, token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 1000 * 60 * 60 * 24 * 7,
-    });
-
-    // 2) invia comunque qualche info utile (opzionale)
-    res.status(200).json({
-        user: {
-            id: user._id,
-            email: user.email,
+    // Se è un admin, nessuna 2FA: emetti subito
+    if (user.role === "admin") {
+        const token = jwt.sign({
+            userId: user._id,
             role: user.role,
             firstName: user.firstName,
-            lastName: user.lastName
-        }
+            lastName: user.lastName,
+            email: user.email
+        }, jwtSecret, { expiresIn: jwtExpire });
+
+        const cookieName = "adminToken";
+        res.cookie(cookieName, token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 1000 * 60 * 60 * 24 * 7,
+        });
+
+        return res.status(200).json({
+            user: { id: user._id, email: user.email, role: user.role, firstName: user.firstName, lastName: user.lastName }
+        });
+    }
+
+    // Manager: se 2FA non abilitata ➞ login come prima
+    if (!user.twoFactorEnabled) {
+        const token = jwt.sign({
+            userId: user._id,
+            role: user.role,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email
+        }, jwtSecret, { expiresIn: jwtExpire });
+
+        const cookieName = "managerToken";
+        res.cookie(cookieName, token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 1000 * 60 * 60 * 24 * 7,
+        });
+
+        return res.status(200).json({
+            user: { id: user._id, email: user.email, role: user.role, firstName: user.firstName, lastName: user.lastName }
+        });
+    }
+
+    // Manager + 2FA abilitata:
+    // se device già trusted ➞ emetti token definitivo
+    if (deviceId && user.twoFactorDevices.includes(deviceId)) {
+        const token = jwt.sign({
+            userId: user._id,
+            role: user.role,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email
+        }, jwtSecret, { expiresIn: jwtExpire });
+
+        res.cookie("managerToken", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 1000 * 60 * 60 * 24 * 7,
+        });
+
+        return res.status(200).json({
+            user: { id: user._id, email: user.email, role: user.role, firstName: user.firstName, lastName: user.lastName }
+        });
+    }
+
+    // Altrimenti ➞ avvia flusso 2FA: emetti just-in-time twoFaToken
+    const twoFaToken = jwt.sign(
+        {
+            id: user._id, role: user.role,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            twoFa: true
+        },
+        jwtSecret,
+        { expiresIn: "5m" }
+    );
+    return res.status(200).json({
+        requires2FA: true,
+        twoFaToken,
     });
 };
 
@@ -213,8 +270,17 @@ exports.logoutAdmin = (req, res) => {
 };
 
 exports.me = (req, res) => {
-    res.json({ user: req.user });
+    // req.user è il payload estratto da JWT: userId, role, firstName, lastName, email
+    // Carichiamo però dal DB lo stato della 2FA
+    User.findById(req.user.userId).select('firstName lastName email role twoFactorEnabled')
+        .then(user => {
+            if (!user) return res.status(404).json({ message: 'Utente non trovato' });
+            res.json({ user });
+        })
+        .catch(err => {
+            console.error(err);
+            res.status(500).json({ message: 'Errore interno' });
+        });
 };
-
 
 

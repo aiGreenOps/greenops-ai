@@ -1,29 +1,27 @@
+// index.js
 const express = require("express");
 const cookieParser = require("cookie-parser");
-const connectDB = require("./config/db.config");
 const cors = require("cors");
-
-const dotenv = require("dotenv");
-dotenv.config();
-
 const path = require("path");
 const passport = require("passport");
+const http = require("http");
+const dotenv = require("dotenv");
+dotenv.config();
+require("./config/passport.config");
+
+const connectDB = require("./config/db.config");
 const seedAdmin = require("./scripts/seedAdmin");
 const authRoutes = require("./routes/auth.routes");
 const adminRoutes = require("./routes/admin.routes");
-const transporter = require("./config/mailer.config");
-
-require("./config/passport.config");
+// PRIMA: require del router + handler
+const { router: twoFaRouter, authenticateHandler } = require("./routes/2fa.routes");
+const { protect } = require("./middleware/auth.middleware"); // o path corretto
 
 const app = express();
-
-const http = require("http");
-
 const server = http.createServer(app);
 const io = require("socket.io")(server, {
-    cors: { origin: "http://localhost:3000", credentials: true }
+    cors: { origin: "http://localhost:3000", credentials: true },
 });
-
 app.set("io", io);
 
 app.use(cors({ origin: "http://localhost:3000", credentials: true }));
@@ -32,13 +30,19 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 app.use(cookieParser());
 
+// le tue altre route
 app.use("/api/admin", adminRoutes);
 app.use("/api/auth", authRoutes);
+
+// ** CHALLENGE 2FA ** (senza cookie)
+app.post("/api/2fa/authenticate", authenticateHandler);
+
+// ** SETUP / VERIFY 2FA ** (con cookie)
+app.use("/api/2fa", protect, twoFaRouter);
 
 connectDB()
     .then(async () => {
         await seedAdmin();
-
         server.listen(3001, () =>
             console.log("🚀 Server avviato su http://localhost:3001")
         );

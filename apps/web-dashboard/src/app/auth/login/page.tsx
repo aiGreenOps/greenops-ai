@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -12,16 +12,25 @@ import {
     FaDiscord,
     FaSignInAlt,
 } from "react-icons/fa";
+import { getDeviceId } from "../../../lib/deviceId";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
+const API_URL_2FA = process.env.NEXT_PUBLIC_API_BASE!;
 
 export default function LoginPage() {
     const router = useRouter();
     const params = useSearchParams();
     const oauthStatus = params.get("oauthStatus");
+
     const [formData, setFormData] = useState({ email: "", password: "" });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // 2FA-specific
+    const [twoFaToken, setTwoFaToken] = useState<string | null>(null);
+    const [otp, setOtp] = useState("");
+    const [useRecovery, setUseRecovery] = useState(false);
+    const [error2FA, setError2FA] = useState<string | null>(null);
 
     useEffect(() => {
         if (oauthStatus === "pending") {
@@ -29,7 +38,6 @@ export default function LoginPage() {
         }
         if (oauthStatus === "success") {
             toast.success("Login effettuato!");
-            // opzionale: fai subito il push in dashboard
             setTimeout(() => router.push("/dashboard"), 1000);
         }
     }, [oauthStatus, router]);
@@ -44,23 +52,64 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
+            const deviceId = getDeviceId();
             const res = await fetch(`${API_URL}/login`, {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
+                body: JSON.stringify({ ...formData, deviceId }),
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.message || "Errore sconosciuto");
-            
-            if (data.user.role === "admin") {
-                router.push("/dashboard/admin");
-            } else {
-                router.push("/dashboard/user");
-            }
 
+            if (data.requires2FA) {
+                // Inizia il flusso 2FA
+                setTwoFaToken(data.twoFaToken);
+            } else if (res.ok) {
+                // Login normale → redirect in base al ruolo
+                if (data.user.role === "admin") {
+                    router.push("/dashboard/admin");
+                } else {
+                    router.push("/dashboard/user");
+                }
+            } else {
+                throw new Error(data.message || "Errore di login");
+            }
         } catch (err: any) {
             setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handle2FASubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError2FA(null);
+        setLoading(true);
+
+        try {
+            const deviceId = getDeviceId();
+            const res = await fetch(`${API_URL_2FA}/api/2fa/authenticate`, {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    twoFaToken,
+                    token: otp,
+                    deviceId,
+                    useRecoveryCode: useRecovery
+                }),
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                // Dopo 2FA siamo loggati → redirect
+                // I manager finiscono su /dashboard/user
+                router.push("/dashboard/user");
+            } else {
+                throw new Error(data.error || "Codice 2FA non valido");
+            }
+        } catch (err: any) {
+            setError2FA(err.message);
         } finally {
             setLoading(false);
         }
@@ -70,6 +119,54 @@ export default function LoginPage() {
         window.location.href = `${API_URL}/${provider}`;
     };
 
+    // Se siamo in fase di 2FA challenge, mostriamo l'input dedicato
+    if (twoFaToken) {
+        return (
+            <main className={styles.page}>
+                <div className={styles.formContainer}>
+                    <h1 style={{ textAlign: "center" }}>Verifica 2FA</h1>
+                    <form onSubmit={handle2FASubmit}>
+                        <div className={styles.inputGroup}>
+                            <label htmlFor="otp">Codice OTP o recovery</label>
+                            <input
+                                id="otp"
+                                name="otp"
+                                type="text"
+                                required
+                                placeholder="Inserisci codice"
+                                value={otp}
+                                onChange={e => setOtp(e.target.value)}
+                            />
+                        </div>
+                        <div className={styles.inputGroup}>
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    checked={useRecovery}
+                                    onChange={e => setUseRecovery(e.target.checked)}
+                                />{" "}
+                                Usa recovery code
+                            </label>
+                        </div>
+                        <button
+                            type="submit"
+                            className={styles.submitButton}
+                            disabled={loading}
+                        >
+                            {loading ? "Verifica…" : (
+                                <>
+                                    <FaSignInAlt style={{ marginRight: 6 }} /> Verifica
+                                </>
+                            )}
+                        </button>
+                        {error2FA && <p style={{ color: "red", marginTop: 12 }}>{error2FA}</p>}
+                    </form>
+                </div>
+            </main>
+        );
+    }
+
+    // Login standard
     return (
         <main className={styles.page}>
             <div className={styles.formContainer}>
@@ -115,9 +212,7 @@ export default function LoginPage() {
                     </button>
                 </form>
 
-                {error && (
-                    <p style={{ color: "red", marginTop: 12 }}>{error}</p>
-                )}
+                {error && <p style={{ color: "red", marginTop: 12 }}>{error}</p>}
 
                 <hr style={{ margin: "20px 0" }} />
 

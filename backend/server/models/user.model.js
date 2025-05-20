@@ -1,5 +1,10 @@
 const mongoose = require("mongoose");
 
+const recoveryCodeSchema = new mongoose.Schema({
+    code: { type: String, required: true },
+    used: { type: Boolean, default: false },
+});
+
 const UserSchema = new mongoose.Schema({
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
@@ -25,6 +30,8 @@ const UserSchema = new mongoose.Schema({
     },
     twoFactorEnabled: { type: Boolean, default: false },
     twoFactorSecret: { type: String },
+    recoveryCodes: [recoveryCodeSchema],
+    twoFactorDevices: { type: [String], default: [] },
     createdAt: { type: Date, default: Date.now }
 });
 

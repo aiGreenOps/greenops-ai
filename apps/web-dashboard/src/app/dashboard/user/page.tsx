@@ -1,8 +1,9 @@
-"use client";
+'use client';
 
 import { useEffect, useState } from "react";
 import LogoutButton from "@/components/LogoutButton";
 import styles from "./page.module.css";
+import TwoFactorSetup from "@/components/TwoFactorSetup";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -12,6 +13,7 @@ interface User {
     role: "user" | "admin" | "manager";
     firstName: string;
     lastName: string;
+    twoFactorEnabled: boolean; 
 }
 
 export default function UserDashboard() {
@@ -19,36 +21,41 @@ export default function UserDashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
+    const fetchMe = async () => {
+        try {
+            const res = await fetch(`${API_BASE}/me`, { credentials: "include" });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || "Errore");
+            setUser(data.user);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        (async () => {
-            try {
-                const res = await fetch(`${API_BASE}/me`, {
-                    credentials: "include",
-                });
-                const data = await res.json();
-                console.log(data);
-                if (!res.ok) throw new Error(data.message || "Errore");
-                setUser(data.user);
-            } catch (err: any) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        })();
+        fetchMe();
     }, []);
 
     if (error) return <p style={{ color: "red" }}>{error}</p>;
-    if (!user) return null;
+    if (loading || !user) return null;
 
     return (
         <main className={styles.page}>
             <header style={{ display: "flex", justifyContent: "space-between" }}>
                 <h1>Dashboard Manager</h1>
-                <LogoutButton kind="manager"/>
+                <LogoutButton kind="manager" />
             </header>
             <h2>Benvenuto, {user.firstName}!</h2>
             <p>Ruolo: {user.role}</p>
-            {/* qui tutto ciò che serve nella dashboard utente */}
+
+            <TwoFactorSetup
+                enabled={user.twoFactorEnabled}
+                onToggle={(newState) =>
+                    setUser((u) => u ? { ...u, twoFactorEnabled: newState } : u)
+                }
+            />
         </main>
     );
 }

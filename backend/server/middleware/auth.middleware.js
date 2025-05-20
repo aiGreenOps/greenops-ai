@@ -28,6 +28,7 @@ exports.protectAdmin = (req, res, next) => {
     }
     try {
         req.user = jwt.verify(token, jwtSecret);
+        console.log("IN");                    
         next();
     } catch {
         return res.status(401).json({ message: "Token admin non valido" });
@@ -37,8 +38,29 @@ exports.protectAdmin = (req, res, next) => {
 // (riusa il tuo requireRole per checking del ruolo)
 // es.
 exports.requireRole = (role) => (req, res, next) => {
+
     if (req.user.role !== role) {
         return res.status(403).json({ message: "Accesso negato" });
     }
     next();
+};
+
+exports.protect = (req, res, next) => {
+    // legge il token dal cookie
+    const token = req.cookies.managerToken || req.cookies.adminToken;
+    if (!token) {
+        return res.status(401).json({ error: 'Non autenticato' });
+    }
+
+    try {
+        const payload = jwt.verify(token, jwtSecret);
+        // payload può avere .userId (login) o .id (twoFaToken), unifichiamolo:
+        req.user = {
+            id: payload.userId ?? payload.id,
+            role: payload.role
+        };
+        return next();
+    } catch (err) {
+        return res.status(401).json({ error: 'Token non valido' });
+    }
 };
