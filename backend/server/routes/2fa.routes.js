@@ -70,13 +70,14 @@ async function authenticateHandler(req, res) {
     let payload;
     try {
         payload = jwt.verify(twoFaToken, jwtSecret);
+        console.log(payload);
         if (!payload.twoFa) throw new Error();
     } catch {
         return res.status(401).json({ error: "Sessione 2FA non valida o scaduta" });
     }
 
     // 3.2 carica l’utente dal payload
-    const user = await User.findById(payload.id);
+    const user = await User.findById(payload.userId);
     if (!user) return res.status(404).json({ error: "Utente non trovato" });
 
     // 3.3 verifica OTP o recovery

@@ -38,7 +38,7 @@ export default function AdminDashboard() {
     useEffect(() => {
         fetchPending();
 
-        socket.on("newPendingUser", (user: PendingUser) => {
+        socket.on("newPendingManager", (user: PendingUser) => {
             setPending((prev) => [user, ...prev]);
         });
 

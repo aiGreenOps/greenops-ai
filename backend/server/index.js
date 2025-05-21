@@ -13,6 +13,8 @@ const connectDB = require("./config/db.config");
 const seedAdmin = require("./scripts/seedAdmin");
 const authRoutes = require("./routes/auth.routes");
 const adminRoutes = require("./routes/admin.routes");
+const managerRoutes = require("./routes/manager.routes");
+
 // PRIMA: require del router + handler
 const { router: twoFaRouter, authenticateHandler } = require("./routes/2fa.routes");
 const { protect } = require("./middleware/auth.middleware"); // o path corretto
@@ -33,6 +35,7 @@ app.use(cookieParser());
 // le tue altre route
 app.use("/api/admin", adminRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/manager", managerRoutes);
 
 // ** CHALLENGE 2FA ** (senza cookie)
 app.post("/api/2fa/authenticate", authenticateHandler);
@@ -43,8 +46,8 @@ app.use("/api/2fa", protect, twoFaRouter);
 connectDB()
     .then(async () => {
         await seedAdmin();
-        server.listen(3001, () =>
-            console.log("🚀 Server avviato su http://localhost:3001")
+        server.listen(3001, "0.0.0.0", () =>
+            console.log("🚀 Server avviato su http://0.0.0.0:3001")
         );
     })
     .catch((err) => {

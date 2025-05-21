@@ -8,7 +8,7 @@ const { verifyEmail } = require("../controllers/auth.controller");
 const { login } = require("../controllers/auth.controller");
 const { logout } = require("../controllers/auth.controller");
 const { me } = require("../controllers/auth.controller");
-const { logoutManager }  = require("../controllers/auth.controller");
+const { logoutManager } = require("../controllers/auth.controller");
 const { protectManager } = require("../middleware/auth.middleware");
 const jwt = require("jsonwebtoken");
 const { jwtSecret, jwtExpire } = require("../config/jwt.config");
@@ -25,14 +25,31 @@ router.post(
 
 router.post("/logout", protectManager, logoutManager);
 
+const isMobile = (req) => req.get('x-client') === 'mobile';
+
 router.post(
-    "/register",
+    '/register',
     [
-        body("firstName").notEmpty(),
-        body("lastName").notEmpty(),
-        body("email").isEmail(),
-        body("password").isLength({ min: 6 }),
-        body("fiscalCode").notEmpty()
+        body('firstName')
+            .notEmpty().withMessage('firstName è obbligatorio'),
+        body('lastName')
+            .notEmpty().withMessage('lastName è obbligatorio'),
+        body('email')
+            .isEmail().withMessage('Email non valida'),
+        body('password')
+            .isLength({ min: 6 }).withMessage('La password deve avere almeno 6 caratteri'),
+
+        // fiscalCode solo se NON mobile
+        body('fiscalCode')
+            .if((value, { req }) => !isMobile(req))
+            .notEmpty().withMessage('Codice fiscale obbligatorio'),
+
+        // role solo se mobile
+        body('role')
+            .if((value, { req }) => isMobile(req))
+            .notEmpty().withMessage('Role obbligatorio per mobile')
+            .isIn(['dipendente', 'manutentore'])
+            .withMessage('Role deve essere dipendente o manutentore'),
     ],
     validateRequest,
     register
@@ -72,7 +89,7 @@ router.get(
 
         if (req.user.status === "pending") {
             const io = req.app.get("io");
-            io.emit("newPendingUser", {
+            io.emit("newPendingManager", {
                 _id: req.user._id,
                 firstName: req.user.firstName,
                 lastName: req.user.lastName,
@@ -115,7 +132,7 @@ router.get(
 
         if (req.user.status === "pending") {
             const io = req.app.get("io");
-            io.emit("newPendingUser", {
+            io.emit("newPendingManager", {
                 _id: req.user._id,
                 firstName: req.user.firstName,
                 lastName: req.user.lastName,
@@ -155,7 +172,7 @@ router.get(
 
         if (req.user.status === "pending") {
             const io = req.app.get("io");
-            io.emit("newPendingUser", {
+            io.emit("newPendingManager", {
                 _id: req.user._id,
                 firstName: req.user.firstName,
                 lastName: req.user.lastName,

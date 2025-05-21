@@ -14,95 +14,145 @@ const transporter = nodemailer.createTransport({
     },
 });
 
+// mappa i ruoli dal client mobile a quelli del database
+const ROLE_MAP = {
+    dipendente: "employee",
+    manutentore: "maintainer",
+};
+
 exports.register = async (req, res) => {
+    const isMobile = req.get("X-Client") === "mobile";
     const {
-        firstName,
-        lastName,
-        email,
-        password,
-        phone,
-        fiscalCode,
-        invitationToken,
+        firstName, lastName, email, password, phone,
+        fiscalCode,      // web only
+        role,            // mobile only: "dipendente"|"manutentore"
+        invitationToken, // web invited OR mobile invited
     } = req.body;
 
-    // verifica invito
-    let isInvited = false;
-    if (invitationToken) {
-        try {
-            const payload = jwt.verify(invitationToken, jwtSecret);
-            if (payload.email !== email) {
-                return res
-                    .status(400)
-                    .json({ message: "Token e email non corrispondono" });
-            }
-            isInvited = true;
-        } catch {
-            return res
-                .status(400)
-                .json({ message: "Token di invito non valido o scaduto" });
-        }
+    // 1) Campi obbligatori
+    if (!firstName || !lastName || !email || !password || !phone) {
+        return res.status(400).json({ message: "Missing required fields" });
+    }
+    if (!isMobile && !fiscalCode) {
+        return res.status(400).json({ message: "Fiscal code required for web" });
     }
 
-    // controlli di unicità
+    // 2) Unicità
     if (await User.findOne({ email })) {
-        return res.status(400).json({ message: "Email già registrata" });
-    }
-    if (await User.findOne({ fiscalCode })) {
-        return res.status(400).json({ message: "Codice fiscale già registrato" });
+        return res.status(400).json({ message: "Email already in use" });
     }
     if (await User.findOne({ phone })) {
-        return res.status(400).json({ message: "Numero di telefono già registrato" });
+        return res.status(400).json({ message: "Phone already in use" });
+    }
+    if (!isMobile && await User.findOne({ fiscalCode })) {
+        return res.status(400).json({ message: "Fiscal code already in use" });
     }
 
-    // hash password
+    // 3) Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // crea utente
-    const user = await User.create({
+    // 4) Determina role / status / emailVerified
+    let serverRole, status, emailVerified = false;
+
+    if (isMobile) {
+        // --- Mobile flow ---
+
+        // se arriva token (invitato), è maintainer invitato
+        if (invitationToken) {
+            let payload;
+            try {
+                payload = jwt.verify(invitationToken, jwtSecret);
+                if (payload.email !== email) {
+                    return res.status(400).json({ message: "Token and email mismatch" });
+                }
+            } catch {
+                return res.status(400).json({ message: "Invalid or expired invitation token" });
+            }
+            serverRole = "maintainer";
+            emailVerified = true;
+            status = "active";
+
+        } else {
+            // self‐signup da mobile
+            if (role === "dipendente") {
+                serverRole = "employee";
+                emailVerified = false;
+                status = "active";
+            } else if (role === "manutentore") {
+                serverRole = "maintainer";
+                emailVerified = false;
+                status = "unverified";   // in attesa di approvazione
+            } else {
+                return res.status(400).json({ message: "Invalid role for mobile signup" });
+            }
+        }
+
+    } else {
+        // --- Web flow (manager invites) ---
+        let isInvited = false;
+        if (invitationToken) {
+            try {
+                const p = jwt.verify(invitationToken, jwtSecret);
+                if (p.email !== email) {
+                    return res.status(400).json({ message: "Token and email mismatch" });
+                }
+                isInvited = true;
+            } catch {
+                return res.status(400).json({ message: "Invalid or expired invitation token" });
+            }
+        }
+        serverRole = "manager";
+        emailVerified = isInvited;
+        status = isInvited ? "active" : "unverified";
+    }
+
+    // 5) Create user
+    const u = await User.create({
         firstName,
         lastName,
         email,
         phone,
-        fiscalCode,
         passwordHash,
-        emailVerified: isInvited,
-        status: isInvited ? "active" : "unverified",
-        role: "manager",
+        role: serverRole,
+        emailVerified,
+        status,
+        authProvider: "local",
+        ...(!isMobile && { fiscalCode }),
     });
 
-    // flusso standard di verifica email se NON invitato
-    if (!isInvited) {
+    // 6) Se non è verificato, mandiamo la mail di verifica
+    if (!emailVerified) {
         const token = jwt.sign({ email }, jwtSecret, { expiresIn: "15m" });
-        const verificationUrl = `${process.env.BACKEND_URL}/api/auth/verify-email?token=${token}`;
-
+        const url = `${process.env.BACKEND_URL}/api/auth/verify-email?token=${token}`;
         await transporter.sendMail({
             from: `"GreenOps AI" <${process.env.EMAIL_USER}>`,
             to: email,
-            subject: "Verifica il tuo indirizzo email",
-            html: `
-        <p>Ciao ${firstName},</p>
-        <a href="${verificationUrl}">Clicca qui per verificare la tua email.</a>
-        <br>
-        <p>Il link scade tra 15 minuti.</p>
-      `,
+            subject: "Verify your email",
+            html: `<p>Hello ${firstName},</p>
+                  <a href="${url}">Click here to verify your email</a>
+                  <p>Link expires in 15 minutes.</p>`,
         });
-
-        return res
-            .status(201)
-            .json({
-                message:
-                    "Registrazione ricevuta. Verifica l'email per completare il processo.",
-            });
     }
 
-    // se invitato → nessuna mail di verifica, utente già attivo
-    res
-        .status(201)
-        .json({
-            message: "Registrazione completata. Ora puoi accedere alla dashboard.",
+    // 7) Risposta mobile vs web
+    if (isMobile) {
+        const payload = {
+            userId: u._id,
+            firstName: u.firstName,
+            lastName: u.lastName,
+            email: u.email,
+            role: u.role,
+        };
+        const jwtToken = jwt.sign(payload, jwtSecret, { expiresIn: jwtExpire });
+        return res.status(201).json({ token: jwtToken, user: payload });
+    } else {
+        return res.status(201).json({
+            message: emailVerified
+                ? "Registration complete. You can now log in."
+                : "Registration received. Please verify your email before logging in.",
         });
+    }
 };
-
 exports.verifyEmail = async (req, res) => {
     const { token } = req.query;
     try {
@@ -114,34 +164,48 @@ exports.verifyEmail = async (req, res) => {
         if (user.emailVerified) {
             return res.status(400).json({ message: "Email già verificata" });
         }
+
         user.emailVerified = true;
-        user.status = "pending";
+        // se dipendente → active, se manutentore → pending, se manager → pending
+        if (user.role === "employee") {
+            user.status = "active";
+        } else if (user.role === "maintainer" || user.role === "manager") {
+            user.status = "pending";
+        }
         await user.save();
 
-        // notifica in real-time
+        // notifica real-time al canale giusto
         const io = req.app.get("io");
-        io.emit("newPendingUser", {
+        const payload = {
             _id: user._id,
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,
-        });
+        };
+        if (user.role === "manager") {
+            io.emit("newPendingManager", payload);
+        } else if (user.role === "maintainer") {
+            io.emit("newPendingMaintainer", payload);
+        }
 
-        res
-            .status(200)
-            .json({
-                message:
-                    "✅ Email verificata. Ora puoi essere approvato da un admin.",
-            });
+        return res.status(200).json({
+            message:
+                user.status === "active"
+                    ? "✅ Email verificata. Puoi ora effettuare il login."
+                    : "✅ Email verificata. In attesa di approvazione.",
+        });
     } catch {
-        res.status(400).json({ message: "❌ Link non valido o scaduto." });
+        return res.status(400).json({ message: "❌ Link non valido o scaduto." });
     }
 };
 
+
 exports.login = async (req, res) => {
     const { email, password, deviceId } = req.body;
-    const user = await User.findOne({ email });
+    const isMobile = req.get("x-client") === "mobile";
 
+    // 1) Trova utente
+    const user = await User.findOne({ email });
     if (!user) {
         return res.status(401).json({ message: "Credenziali non valide" });
     }
@@ -149,72 +213,78 @@ exports.login = async (req, res) => {
         return res.status(403).json({ message: "Email non verificata" });
     }
     if (user.status !== "active") {
-        return res.status(403).json({ message: "Utente non approvato dall'amministratore" });
+        return res.status(403).json({ message: "Utente non approvato" });
     }
 
+    // 2) Verifica password
     const validPassword = await bcrypt.compare(password, user.passwordHash);
     if (!validPassword) {
         return res.status(401).json({ message: "Credenziali non valide" });
     }
 
-    // Se è un admin, nessuna 2FA: emetti subito
+    // 3) Su mobile permetti solo employee/maintainer
+    if (isMobile && !["employee", "maintainer"].includes(user.role)) {
+        return res.status(403).json({ message: "Accesso non consentito da mobile" });
+    }
+
+    // Funzione per creare token + payload
+    const makePayload = () => ({
+        userId: user._id,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+    });
+
+    // 4) Branch ADMIN (web only, perché mobile viene bloccato sopra)
     if (user.role === "admin") {
-        const token = jwt.sign({
-            userId: user._id,
-            role: user.role,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email
-        }, jwtSecret, { expiresIn: jwtExpire });
+        const payload = makePayload();
+        const token = jwt.sign(payload, jwtSecret, { expiresIn: jwtExpire });
 
-        const cookieName = "adminToken";
-        res.cookie(cookieName, token, {
+        if (isMobile) {
+            // non dovrebbe succedere perché admin è vietato in mobile
+            return res.status(403).json({ message: "Accesso non consentito da mobile" });
+        }
+
+        // WEB: imposta cookie
+        res.cookie("adminToken", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
             path: "/",
             maxAge: 1000 * 60 * 60 * 24 * 7,
         });
-
-        return res.status(200).json({
-            user: { id: user._id, email: user.email, role: user.role, firstName: user.firstName, lastName: user.lastName }
-        });
+        return res.status(200).json({ user: payload });
     }
 
-    // Manager: se 2FA non abilitata ➞ login come prima
+    // 5) Branch non-admin senza 2FA (includendo manager senza 2FA e employee)
     if (!user.twoFactorEnabled) {
-        const token = jwt.sign({
-            userId: user._id,
-            role: user.role,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email
-        }, jwtSecret, { expiresIn: jwtExpire });
+        const payload = makePayload();
+        const token = jwt.sign(payload, jwtSecret, { expiresIn: jwtExpire });
+        if (isMobile) {
+            // MOBILE: restituisco token + profilo
+            return res.json({ token, user: payload });
+        }
 
-        const cookieName = "managerToken";
-        res.cookie(cookieName, token, {
+        // WEB: imposta cookie managerToken
+        res.cookie("managerToken", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
             path: "/",
             maxAge: 1000 * 60 * 60 * 24 * 7,
         });
-
-        return res.status(200).json({
-            user: { id: user._id, email: user.email, role: user.role, firstName: user.firstName, lastName: user.lastName }
-        });
+        return res.status(200).json({ user: payload });
     }
 
-    // Manager + 2FA abilitata:
-    // se device già trusted ➞ emetti token definitivo
+    // 6) Manager + 2FA e device trusted
     if (deviceId && user.twoFactorDevices.includes(deviceId)) {
-        const token = jwt.sign({
-            userId: user._id,
-            role: user.role,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email
-        }, jwtSecret, { expiresIn: jwtExpire });
+        const payload = makePayload();
+        const token = jwt.sign(payload, jwtSecret, { expiresIn: jwtExpire });
+
+        if (isMobile) {
+            return res.json({ token, user: payload });
+        }
 
         res.cookie("managerToken", token, {
             httpOnly: true,
@@ -223,25 +293,16 @@ exports.login = async (req, res) => {
             path: "/",
             maxAge: 1000 * 60 * 60 * 24 * 7,
         });
-
-        return res.status(200).json({
-            user: { id: user._id, email: user.email, role: user.role, firstName: user.firstName, lastName: user.lastName }
-        });
+        return res.status(200).json({ user: payload });
     }
 
-    // Altrimenti ➞ avvia flusso 2FA: emetti just-in-time twoFaToken
-    const twoFaToken = jwt.sign(
-        {
-            id: user._id, role: user.role,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            twoFa: true
-        },
-        jwtSecret,
-        { expiresIn: "5m" }
-    );
-    return res.status(200).json({
+    // 7) Altrimenti avvia flusso 2FA
+    const twoFaPayload = {
+        ...makePayload(),
+        twoFa: true
+    };
+    const twoFaToken = jwt.sign(twoFaPayload, jwtSecret, { expiresIn: "5m" });
+    return res.json({
         requires2FA: true,
         twoFaToken,
     });
