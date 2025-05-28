@@ -6,6 +6,7 @@ import Link from "next/link";
 import styles from "./register.module.css";
 import { FaUserPlus } from "react-icons/fa";
 import { decodeJwtPayload, InvitePayload } from "@/lib/jwtUtils";
+import { toast } from "react-toastify";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -25,8 +26,6 @@ export default function RegisterPage() {
   });
   const [isInvited, setIsInvited] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   // Se arrivo con invitationToken, decodificalo manualmente
   useEffect(() => {
@@ -48,10 +47,9 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
+
     if (formData.password !== formData.confirmPassword) {
-      setError("Le password non corrispondono");
+      toast.error("Le password non corrispondono");
       return;
     }
 
@@ -73,13 +71,20 @@ export default function RegisterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Errore sconosciuto");
 
-      setSuccess(data.message);
-      setTimeout(() => router.push("/auth/login"), 3000);
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.message || "Registrazione fallita");
+        return;
+      }
+
+      toast.success(data.message || "Registrazione completata");
+      // 🔁 Rimuovi il redirect automatico
+      // router.push("/auth/login");
+
     } catch (err: any) {
-      setError(err.message);
+      toast.error("Errore di rete o server non raggiungibile");
     } finally {
       setLoading(false);
     }
@@ -221,9 +226,6 @@ export default function RegisterPage() {
               )}
           </button>
         </form>
-
-        {error && <p style={{ color: "red", marginTop: 12 }}>{error}</p>}
-        {success && <p style={{ color: "green", marginTop: 12 }}>{success}</p>}
 
         <p style={{ textAlign: "center", marginTop: 20 }}>
           Hai già un account?{" "}

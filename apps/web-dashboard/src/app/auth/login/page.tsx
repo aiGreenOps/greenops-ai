@@ -24,13 +24,11 @@ export default function LoginPage() {
 
     const [formData, setFormData] = useState({ email: "", password: "" });
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
     // 2FA-specific
     const [twoFaToken, setTwoFaToken] = useState<string | null>(null);
     const [otp, setOtp] = useState("");
     const [useRecovery, setUseRecovery] = useState(false);
-    const [error2FA, setError2FA] = useState<string | null>(null);
 
     useEffect(() => {
         if (oauthStatus === "pending") {
@@ -48,8 +46,23 @@ export default function LoginPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError(null);
         setLoading(true);
+
+        // Validazioni personalizzate
+        const { email, password } = formData;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!email || !password) {
+            toast.error("Compila tutti i campi.");
+            setLoading(false);
+            return;
+        }
+
+        if (!emailRegex.test(email)) {
+            toast.error("Email non valida.");
+            setLoading(false);
+            return;
+        }
 
         try {
             const deviceId = getDeviceId();
@@ -62,29 +75,30 @@ export default function LoginPage() {
             const data = await res.json();
 
             if (data.requires2FA) {
-                // Inizia il flusso 2FA
                 setTwoFaToken(data.twoFaToken);
             } else if (res.ok) {
-                // Login normale → redirect in base al ruolo
-                if (data.user.role === "admin") {
-                    router.push("/dashboard/admin");
-                } else {
-                    router.push("/dashboard/user");
-                }
+                toast.success("Login effettuato");
+                router.push(data.user.role === "admin" ? "/dashboard/admin" : "/dashboard/user");
             } else {
-                throw new Error(data.message || "Errore di login");
+                toast.error(data.message || "Errore di login");
             }
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err) {
+            toast.error("Errore di rete o server non raggiungibile");
         } finally {
             setLoading(false);
         }
     };
 
+
     const handle2FASubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError2FA(null);
         setLoading(true);
+
+        if (!otp.trim()) {
+            toast.error("Inserisci un codice 2FA o recovery");
+            setLoading(false);
+            return;
+        }
 
         try {
             const deviceId = getDeviceId();
@@ -94,22 +108,22 @@ export default function LoginPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     twoFaToken,
-                    token: otp,
+                    token: otp.trim(),
                     deviceId,
-                    useRecoveryCode: useRecovery
+                    useRecoveryCode: useRecovery,
                 }),
             });
+
             const data = await res.json();
 
             if (res.ok) {
-                // Dopo 2FA siamo loggati → redirect
-                // I manager finiscono su /dashboard/user
+                toast.success("2FA verificata con successo");
                 router.push("/dashboard/user");
             } else {
-                throw new Error(data.error || "Codice 2FA non valido");
+                toast.error(data.error || "Codice 2FA non valido");
             }
-        } catch (err: any) {
-            setError2FA(err.message);
+        } catch (err) {
+            toast.error("Errore nella verifica 2FA");
         } finally {
             setLoading(false);
         }
@@ -159,7 +173,6 @@ export default function LoginPage() {
                                 </>
                             )}
                         </button>
-                        {error2FA && <p style={{ color: "red", marginTop: 12 }}>{error2FA}</p>}
                     </form>
                 </div>
             </main>
@@ -178,8 +191,7 @@ export default function LoginPage() {
                         <input
                             id="email"
                             name="email"
-                            type="email"
-                            required
+                            type="text"
                             placeholder="Inserisci email"
                             value={formData.email}
                             onChange={handleChange}
@@ -192,7 +204,6 @@ export default function LoginPage() {
                             id="password"
                             name="password"
                             type="password"
-                            required
                             placeholder="Inserisci password"
                             value={formData.password}
                             onChange={handleChange}
@@ -212,7 +223,11 @@ export default function LoginPage() {
                     </button>
                 </form>
 
-                {error && <p style={{ color: "red", marginTop: 12 }}>{error}</p>}
+                <p style={{ textAlign: "center", marginTop: 10 }}>
+                    <Link href="/auth/forgot-password" style={{ color: "#1d3557" }}>
+                        Password dimenticata?
+                    </Link>
+                </p>
 
                 <hr style={{ margin: "20px 0" }} />
 

@@ -26,7 +26,14 @@ const io = require("socket.io")(server, {
 });
 app.set("io", io);
 
-app.use(cors({ origin: "http://localhost:3000", credentials: true }));
+
+app.use(cors({
+    origin: [
+        "http://localhost:3000",
+        "http://192.168.1.183:3000"
+    ],
+    credentials: true
+})); 
 app.use(passport.initialize());
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());

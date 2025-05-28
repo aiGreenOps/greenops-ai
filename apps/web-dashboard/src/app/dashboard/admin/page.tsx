@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import LogoutButton from "@/components/LogoutButton";
 import styles from "./page.module.css";
+import { toast } from "react-toastify";
+
 
 interface PendingUser {
     _id: string;
@@ -18,7 +20,6 @@ const socket: Socket = io(API, { withCredentials: true });
 export default function AdminDashboard() {
     const [pending, setPending] = useState<PendingUser[]>([]);
     const [inviteEmail, setInviteEmail] = useState("");
-    const [msg, setMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
     const [loading, setLoading] = useState(false);
 
     // 1) carica i manager in pending
@@ -31,7 +32,29 @@ export default function AdminDashboard() {
             if (!res.ok) throw new Error(data.message || "Errore");
             setPending(data);
         } catch (err: any) {
-            setMsg({ type: "error", text: err.message });
+            toast.error(err.message);
+        }
+    };
+
+    // 2) approva o rifiuta
+    const handleAction = async (id: string, action: "approve" | "reject") => {
+        setLoading(true);
+        try {
+            const res = await fetch(
+                `${API}/api/admin/users/${id}/${action}`,
+                {
+                    method: "PATCH",
+                    credentials: "include",
+                }
+            );
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            toast.success(data.message);
+            await fetchPending();
+        } catch (err: any) {
+            toast.error(err.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -47,35 +70,16 @@ export default function AdminDashboard() {
         };
     }, []);
 
-    // 2) approva o rifiuta
-    const handleAction = async (id: string, action: "approve" | "reject") => {
-        setLoading(true);
-        setMsg(null);
-        try {
-            const res = await fetch(
-                `${API}/api/admin/users/${id}/${action}`,
-                {
-                    method: "PATCH",
-                    credentials: "include",
-                }
-            );
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message);
-            setMsg({ type: "success", text: data.message });
-            await fetchPending();
-        } catch (err: any) {
-            setMsg({ type: "error", text: err.message });
-        } finally {
-            setLoading(false);
-        }
-    };
-
     // 3) invito manager
     const handleInvite = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!inviteEmail) return;
+
+        if (!inviteEmail.trim() || !isValidEmail(inviteEmail)) {
+            toast.error("Inserisci un'email valida.");
+            return;
+        }
+
         setLoading(true);
-        setMsg(null);
         try {
             const res = await fetch(`${API}/api/admin/users/invite`, {
                 method: "POST",
@@ -85,41 +89,32 @@ export default function AdminDashboard() {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message);
-            setMsg({ type: "success", text: data.message });
+            toast.success(data.message);
             setInviteEmail("");
         } catch (err: any) {
-            setMsg({ type: "error", text: err.message });
+            toast.error(err.message);
         } finally {
             setLoading(false);
         }
     };
 
+    const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
     return (
         <main className={styles.page}>
             <header style={{ display: "flex", justifyContent: "space-between" }}>
                 <h1>Dashboard Admin</h1>
-                <LogoutButton kind="admin"/>
+                <LogoutButton kind="admin" />
             </header>
-
-            {msg && (
-                <div
-                    className={
-                        msg.type === "error" ? styles.errorBanner : styles.successBanner
-                    }
-                >
-                    {msg.text}
-                </div>
-            )}
 
             <section className={styles.inviteSection}>
                 <h2>Invita un nuovo Manager</h2>
                 <form onSubmit={handleInvite}>
                     <input
-                        type="email"
+                        type="text"
                         placeholder="Email manager"
                         value={inviteEmail}
                         onChange={(e) => setInviteEmail(e.target.value)}
-                        required
                     />
                     <button type="submit" disabled={loading}>
                         {loading ? "Invio…" : "Invita"}

@@ -127,11 +127,38 @@ exports.register = async (req, res) => {
         await transporter.sendMail({
             from: `"GreenOps AI" <${process.env.EMAIL_USER}>`,
             to: email,
-            subject: "Verify your email",
-            html: `<p>Hello ${firstName},</p>
-                  <a href="${url}">Click here to verify your email</a>
-                  <p>Link expires in 15 minutes.</p>`,
+            subject: "Verifica il tuo indirizzo email",
+            html: `
+              <div style="font-family:Arial, Helvetica, sans-serif; max-width:600px; margin:auto; border:1px solid #e0e0e0; padding:30px; border-radius:8px;">
+                <div>
+                  <h2 style="margin-bottom:15px; color:#0b6c37;">Verifica Email</h2>
+                </div>
+          
+                <p style="font-size:16px; color:#333;">
+                  Ciao <strong>${firstName}</strong>,
+                </p>
+          
+                <p style="font-size:16px; color:#333;">
+                  Per completare la tua registrazione su <strong>GreenOps AI</strong>, ti chiediamo di confermare il tuo indirizzo email cliccando sul pulsante qui sotto:
+                </p>
+          
+                <div style="margin:30px 0;">
+                  <a href="${url}" style="background-color:#0b6c37; color:#fff; padding:14px 24px; border-radius:5px; text-decoration:none; font-weight:bold;">
+                    Verifica Email
+                  </a>
+                </div>
+          
+                <p style="font-size:14px; color:#666;">
+                  Il link è valido per 15 minuti. Se non hai effettuato questa registrazione, puoi ignorare questa email.
+                </p>
+          
+                <p style="font-size:12px; color:#999; margin-top:40px;">
+                  © 2025 GreenOps AI – Tutti i diritti riservati
+                </p>
+              </div>
+            `,
         });
+
     }
 
     // 7) Risposta mobile vs web
@@ -153,6 +180,7 @@ exports.register = async (req, res) => {
         });
     }
 };
+
 exports.verifyEmail = async (req, res) => {
     const { token } = req.query;
     try {
@@ -207,24 +235,25 @@ exports.login = async (req, res) => {
     // 1) Trova utente
     const user = await User.findOne({ email });
     if (!user) {
-        return res.status(401).json({ message: "Credenziali non valide" });
+        return res.status(401).json({ message: "Email non registrata." });
+    }
+    const validPassword = await bcrypt.compare(password, user.passwordHash);
+    if (!validPassword) {
+        return res.status(401).json({ message: "Credenziali non valide." });
     }
     if (!user.emailVerified) {
-        return res.status(403).json({ message: "Email non verificata" });
+        return res.status(403).json({ message: "Email non verificata." });
     }
     if (user.status !== "active") {
-        return res.status(403).json({ message: "Utente non approvato" });
+        return res.status(403).json({ message: "Utente non approvato." });
     }
 
     // 2) Verifica password
-    const validPassword = await bcrypt.compare(password, user.passwordHash);
-    if (!validPassword) {
-        return res.status(401).json({ message: "Credenziali non valide" });
-    }
+
 
     // 3) Su mobile permetti solo employee/maintainer
     if (isMobile && !["employee", "maintainer"].includes(user.role)) {
-        return res.status(403).json({ message: "Accesso non consentito da mobile" });
+        return res.status(403).json({ message: "Accesso non consentito da mobile." });
     }
 
     // Funzione per creare token + payload
@@ -344,4 +373,117 @@ exports.me = (req, res) => {
         });
 };
 
+const PasswordResetToken = require("../models/passwordResetToken.model");
 
+exports.forgotPassword = async (req, res) => {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+
+    // Risposta standard per evitare enumerazione, ma nessun invio mail
+    if (!user) return res.status(404).json({ message: 'Utente non trovato' });
+
+
+    // Altrimenti: genera token e invia email
+    const token = jwt.sign({ userId: user._id }, jwtSecret, { expiresIn: "15m" });
+
+    await PasswordResetToken.create({
+        userId: user._id,
+        token,
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+    });
+
+    const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password?token=${token}`;
+
+    await transporter.sendMail({
+        from: `"GreenOps AI" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: "Reimposta la tua password – GreenOps AI",
+        html: `
+        <div style="font-family:Arial, Helvetica, sans-serif; max-width:600px; margin:auto; border:1px solid #e0e0e0; padding:30px; border-radius:8px;">
+          <h2 style="margin-bottom:15px; color:#0b6c37;">Richiesta di reimpostazione password</h2>
+  
+          <p style="font-size:16px; color:#333;">
+            Ciao ${user.firstName},
+          </p>
+  
+          <p style="font-size:16px; color:#333;">
+            Abbiamo ricevuto una richiesta per reimpostare la tua password su <strong>GreenOps AI</strong>.
+          </p>
+  
+          <div style="margin:24px 0;">
+            <a href="${resetUrl}" style="background-color:#0b6c37; color:#fff; padding:12px 24px; border-radius:5px; text-decoration:none; font-weight:bold;">
+              Reimposta la Password
+            </a>
+          </div>
+  
+          <p style="font-size:14px; color:#666;">
+            Questo link è valido per 15 minuti. Se non hai richiesto questa operazione, puoi ignorare questa email.
+          </p>
+  
+          <p style="font-size:12px; color:#999; margin-top:40px;">
+            © 2025 GreenOps AI – Tutti i diritti riservati
+          </p>
+        </div>
+      `,
+    });
+
+    return res.status(200).json({ message: "Se esiste un account, riceverai un'email." });
+};
+
+
+
+exports.resetPassword = async (req, res) => {
+    const { token, password } = req.body;
+
+    try {
+        const payload = jwt.verify(token, jwtSecret);
+        const resetRecord = await PasswordResetToken.findOne({
+            userId: payload.userId,
+            token,
+            used: false,
+            expiresAt: { $gt: new Date() }
+        });
+
+        if (!resetRecord) {
+            return res.status(400).json({ message: "❌ Link non valido o già usato" });
+        }
+
+        const user = await User.findById(payload.userId);
+        if (!user) return res.status(404).json({ message: "Utente non trovato" });
+
+        user.passwordHash = await bcrypt.hash(password, 10);
+        await user.save();
+
+        resetRecord.used = true;
+        await resetRecord.save();
+
+        return res.status(200).json({ message: "✅ Password aggiornata con successo" });
+    } catch {
+        return res.status(400).json({ message: "❌ Link non valido o scaduto" });
+    }
+};
+
+exports.checkResetToken = async (req, res) => {
+    const { token } = req.query;
+
+    if (!token) return res.status(400).json({ message: "Token mancante" });
+
+    try {
+        const payload = jwt.verify(token, jwtSecret);
+
+        const resetRecord = await PasswordResetToken.findOne({
+            userId: payload.userId,
+            token,
+            used: false,
+            expiresAt: { $gt: new Date() }
+        });
+
+        if (!resetRecord) {
+            return res.status(400).json({ message: "Token non valido o già usato" });
+        }
+
+        return res.status(200).json({ message: "Token valido" });
+    } catch {
+        return res.status(400).json({ message: "Token non valido o scaduto" });
+    }
+};

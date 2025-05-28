@@ -1,7 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap');
+
+html,
 body {
-    background: white;
-    color: black;
-    font-family: sans-serif;
+    height: 100%;
     margin: 0;
     padding: 0;
+    font-family: 'Nunito', sans-serif;
+}
+
+
+:root {
+    /* GreenOps Brand */
+    --color-primary: #0B6C37;
+    /* Verde scuro */
+    --color-secondary: #77C23E;
+    /* Verde chiaro */
+    --color-accent: #29922e;
+    /* Verde intermedio */
+
+    /* Neutrali */
+    --color-background: #F8F9FA;
+    /* Grigio chiarissimo */
+    --color-surface: #FFFFFF;
+    /* Bianco card */
+    --color-border: #E0E0E0;
+    /* Grigio bordi */
+    --color-text-black: #333333;
+    --color-text-white: #FFFFFF;
+
+    /* Testo principale */
+    --color-subtext: #6C757D;
+    /* Testo secondario */
+
+    /* Alert e stato */
+    --color-success: #4CAF50;
+    --color-warning: #FFC107;
+    --color-danger: #F44336;
+    --color-info: #2196F3;
+}
+
+.dark {
+    --color-primary: #1B5E20;
+    /* Verde scuro profondo */
+    --color-secondary: #66BB6A;
+    /* Verde chiaro */
+    --color-accent: #43A047;
+    /* Verde medio */
+
+    --color-background: #121212;
+    /* Sfondo generale scuro */
+    --color-surface: #1E1E1E;
+    /* Card/box */
+    --color-border: #333333;
+    /* Bordi */
+    --color-text-black: #F5F5F5;
+    /* Testo chiaro */
+    --color-text-White: #FFFFFF;
+
+    --color-subtext: #A0A0A0;
+
+    --color-success: #81C784;
+    --color-warning: #FFD54F;
+    --color-danger: #EF5350;
+    --color-info: #29B6F6;
 }

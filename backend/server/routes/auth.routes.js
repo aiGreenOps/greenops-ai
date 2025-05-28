@@ -9,6 +9,7 @@ const { login } = require("../controllers/auth.controller");
 const { logout } = require("../controllers/auth.controller");
 const { me } = require("../controllers/auth.controller");
 const { logoutManager } = require("../controllers/auth.controller");
+const authController = require("../controllers/auth.controller");
 const { protectManager } = require("../middleware/auth.middleware");
 const jwt = require("jsonwebtoken");
 const { jwtSecret, jwtExpire } = require("../config/jwt.config");
@@ -22,6 +23,10 @@ router.post(
     validateRequest,
     login
 );
+
+router.post("/forgot-password", authController.forgotPassword);
+router.post("/reset-password", authController.resetPassword);
+router.get("/check-reset-token", authController.checkResetToken);
 
 router.post("/logout", protectManager, logoutManager);
 

@@ -71,6 +71,12 @@ export default function LoginPage() {
                     <Text style={styles.buttonText}>Accedi</Text>
                 </TouchableOpacity>
 
+                <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
+                    <TouchableOpacity onPress={() => router.push('/auth/forgot-password')}>
+                        <Text style={styles.link}>Password dimenticata?</Text>
+                    </TouchableOpacity>
+                </View>
+
                 <View style={styles.divider} />
 
                 {/** Pulsanti social - placeholder handlers */}

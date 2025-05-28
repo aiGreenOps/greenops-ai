@@ -3,6 +3,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useAuth } from '../../../contexts/AuthContext';
 import { router } from 'expo-router';
+import { GestureHandlerRootView, PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 
 
 export default function ManutentoreDashboard() {
@@ -21,35 +22,48 @@ export default function ManutentoreDashboard() {
         );
     }
 
-    return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Dashboard Manutentore</Text>
-            <View style={styles.info}>
-                <Text style={styles.label}>ID Utente:</Text>
-                <Text style={styles.value}>{user.userId}</Text>
-            </View>
-            <View style={styles.info}>
-                <Text style={styles.label}>Nome:</Text>
-                <Text style={styles.value}>{user.firstName}</Text>
-            </View>
-            <View style={styles.info}>
-                <Text style={styles.label}>Cognome:</Text>
-                <Text style={styles.value}>{user.lastName}</Text>
-            </View>
-            <View style={styles.info}>
-                <Text style={styles.label}>Email:</Text>
-                <Text style={styles.value}>{user.email}</Text>
-            </View>
-            <View style={styles.info}>
-                <Text style={styles.label}>Ruolo:</Text>
-                <Text style={styles.value}>{user.role}</Text>
-            </View>
+    const SWIPE_THRESHOLD = 80;
 
-            {/* Pulsante Logout */}
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                <Text style={styles.logoutText}>Logout</Text>
-            </TouchableOpacity>
-        </View>
+    const onGestureEvent = (e: PanGestureHandlerGestureEvent) => {
+        const { translationX } = e.nativeEvent;
+        if (translationX > SWIPE_THRESHOLD) {
+            router.replace('/auth/login');
+        }
+    };
+
+    return (
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <PanGestureHandler onGestureEvent={onGestureEvent}>
+                <View style={styles.container}>
+                    <Text style={styles.title}>Dashboard Manutentore</Text>
+                    <View style={styles.info}>
+                        <Text style={styles.label}>ID Utente:</Text>
+                        <Text style={styles.value}>{user.userId}</Text>
+                    </View>
+                    <View style={styles.info}>
+                        <Text style={styles.label}>Nome:</Text>
+                        <Text style={styles.value}>{user.firstName}</Text>
+                    </View>
+                    <View style={styles.info}>
+                        <Text style={styles.label}>Cognome:</Text>
+                        <Text style={styles.value}>{user.lastName}</Text>
+                    </View>
+                    <View style={styles.info}>
+                        <Text style={styles.label}>Email:</Text>
+                        <Text style={styles.value}>{user.email}</Text>
+                    </View>
+                    <View style={styles.info}>
+                        <Text style={styles.label}>Ruolo:</Text>
+                        <Text style={styles.value}>{user.role}</Text>
+                    </View>
+
+                    {/* Pulsante Logout */}
+                    <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                        <Text style={styles.logoutText}>Logout</Text>
+                    </TouchableOpacity>
+                </View>
+            </PanGestureHandler>
+        </GestureHandlerRootView >
     );
 }
 

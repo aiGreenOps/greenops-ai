@@ -5,6 +5,7 @@ import { io, Socket } from "socket.io-client";
 import LogoutButton from "@/components/LogoutButton";
 import TwoFactorSetup from "@/components/TwoFactorSetup";
 import styles from "./page.module.css";
+import { toast } from "react-toastify";
 
 const API = process.env.NEXT_PUBLIC_API_BASE!;
 const socket: Socket = io(API, { withCredentials: true });
@@ -32,7 +33,6 @@ export default function ManagerDashboard() {
     // --- pending/invite state ---
     const [pending, setPending] = useState<PendingUser[]>([]);
     const [inviteEmail, setInviteEmail] = useState("");
-    const [msg, setMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
 
     // fetch me
@@ -54,12 +54,13 @@ export default function ManagerDashboard() {
         try {
             const res = await fetch(`${API}/api/manager/users/pending`, { credentials: "include" });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.message || "Errore fetch pending");
+            if (!res.ok) throw new Error(data.message || "Errore nel recupero dei manutentori in attesa");
             setPending(data);
         } catch (err: any) {
-            setMsg({ type: "error", text: err.message });
+            toast.error(err.message || "Errore imprevisto durante il fetch");
         }
     };
+
 
     useEffect(() => {
         fetchMe();
@@ -75,28 +76,40 @@ export default function ManagerDashboard() {
 
     const handleAction = async (id: string, action: "approve" | "reject") => {
         setActionLoading(true);
-        setMsg(null);
         try {
             const res = await fetch(`${API}/api/manager/users/${id}/${action}`, {
                 method: "PATCH",
                 credentials: "include",
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.message || "Errore operazione");
-            setMsg({ type: "success", text: data.message });
+            if (!res.ok) throw new Error(data.message || "Errore durante l'operazione");
+
+            toast.success(data.message || `Utente ${action === "approve" ? "approvato" : "rifiutato"} con successo`);
             await fetchPending();
         } catch (err: any) {
-            setMsg({ type: "error", text: err.message });
+            toast.error(err.message || "Errore imprevisto");
         } finally {
             setActionLoading(false);
         }
     };
 
+
     const handleInvite = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!inviteEmail) return;
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!inviteEmail.trim()) {
+            toast.error("Inserisci un'email.");
+            return;
+        }
+
+        if (!emailRegex.test(inviteEmail)) {
+            toast.error("Email non valida.");
+            return;
+        }
+
         setActionLoading(true);
-        setMsg(null);
         try {
             const res = await fetch(`${API}/api/manager/users/invite`, {
                 method: "POST",
@@ -106,14 +119,15 @@ export default function ManagerDashboard() {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || "Errore invito");
-            setMsg({ type: "success", text: data.message });
+            toast.success(data.message);
             setInviteEmail("");
         } catch (err: any) {
-            setMsg({ type: "error", text: err.message });
+            toast.error(err.message);
         } finally {
             setActionLoading(false);
         }
     };
+
 
     if (error) return <p style={{ color: "red" }}>{error}</p>;
     if (loading || !user) return null;
@@ -140,29 +154,18 @@ export default function ManagerDashboard() {
                 <h3>Invita un nuovo Manutentore</h3>
                 <form onSubmit={handleInvite} style={{ display: "flex", gap: "8px", marginBottom: 16 }}>
                     <input
-                        type="email"
+                        type="text"
                         placeholder="Email manutentore"
                         value={inviteEmail}
                         onChange={e => setInviteEmail(e.target.value)}
-                        required
                         disabled={actionLoading}
                     />
+
                     <button type="submit" disabled={actionLoading}>
                         {actionLoading ? "Invio…" : "Invita"}
                     </button>
                 </form>
             </section>
-
-            {msg && (
-                <div
-                    className={
-                        msg.type === "error" ? styles.errorBanner : styles.successBanner
-                    }
-                    style={{ marginBottom: 16 }}
-                >
-                    {msg.text}
-                </div>
-            )}
 
             {/* Pending Section */}
             <section className={styles.pendingSection}>

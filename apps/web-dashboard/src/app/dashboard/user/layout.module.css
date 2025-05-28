@@ -1,0 +1,86 @@
+.wrapper {
+    display: flex;
+    height: 100vh;
+    /* anziché 100% */
+    background-color: var(--color-background);
+}
+
+.sidebar {
+    height: 100%;
+    width: 300px;
+    background: var(--color-primary);
+    background-size: cover;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+.sidebarLogo {
+    width: 100%;
+    height: 100px;
+    background-color: var(--color-secondary);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.sidebarLogoImage {
+    border-radius: 100%;
+    width: 55px;
+    height: 55px;
+}
+
+.sidebarLogoText {
+    color: var(--color-text-white);
+    font-size: 23px;
+    margin-left: 10px;
+    font-weight: 100;
+}
+
+.sidebarLogoText span {
+    color: var(--color-text-white);
+    font-size: 23px;
+    font-weight: 900;
+}
+
+.sidebarMenu {
+    display: flex;
+    flex-direction: column;
+    margin-top: 20px;
+    padding: 20px;
+}
+
+.sidebarMenu .sidebarItem {
+    padding: 15px;
+    margin-bottom: 10px;
+    text-decoration: none;
+    font-weight: 100;
+    color: var(--color-text-white);
+    display: flex;
+    align-items: center;
+    text-transform: uppercase;
+    font-size: 13px;
+    border-radius: 10px;
+    transition: 0.3s ease-in-out;
+    background: rgba(19, 172, 88, 0.25);
+}
+
+.sidebarItem:visited {
+    color: white;
+}
+
+.sidebarItem .sidebarIcon {
+    margin-right: 10px;
+    font-size: 20px;
+    transition: 0.2s ease-in-out;
+}
+
+.sidebarItem:hover {
+    background: rgba(24, 218, 111, 0.45);
+}
+
+.sidebarItem:hover .sidebarIcon {
+    margin-right: 15px;
+}
