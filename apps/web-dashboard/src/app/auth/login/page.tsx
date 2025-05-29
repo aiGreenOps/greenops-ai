@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from 'next/image';
 import styles from "./login.module.css";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -183,28 +184,37 @@ export default function LoginPage() {
     return (
         <main className={styles.page}>
             <div className={styles.formContainer}>
-                <h1 style={{ textAlign: "center" }}>Login</h1>
+                <h1 className={styles.formTitle}>Sign in to your account</h1>
+                <p className={styles.formParag}>Monitor and manage your green spaces</p>
 
                 <form onSubmit={handleSubmit}>
                     <div className={styles.inputGroup}>
-                        <label htmlFor="email">Email:</label>
+                        <div className={styles.labels}>
+                            <label htmlFor="email">Email address</label>
+                        </div>
                         <input
                             id="email"
                             name="email"
                             type="text"
-                            placeholder="Inserisci email"
+                            placeholder="mail@example.com"
                             value={formData.email}
+                            autoComplete="off"
                             onChange={handleChange}
                         />
                     </div>
 
                     <div className={styles.inputGroup}>
-                        <label htmlFor="password">Password:</label>
+                        <div className={styles.labels}>
+                            <label htmlFor="password">Password</label>
+                            <Link href="/auth/forgot-password" className={styles.link}>
+                                Forgot password?
+                            </Link>
+                        </div>
                         <input
                             id="password"
                             name="password"
                             type="password"
-                            placeholder="Inserisci password"
+                            placeholder="password"
                             value={formData.password}
                             onChange={handleChange}
                         />
@@ -217,48 +227,38 @@ export default function LoginPage() {
                     >
                         {loading ? "Caricamento…" : (
                             <>
-                                <FaSignInAlt style={{ marginRight: 6 }} /> Accedi
+                                <FaSignInAlt style={{ marginRight: 6 }} />Sign in
                             </>
                         )}
                     </button>
                 </form>
 
-                <p style={{ textAlign: "center", marginTop: 10 }}>
-                    <Link href="/auth/forgot-password" style={{ color: "#1d3557" }}>
-                        Password dimenticata?
-                    </Link>
-                </p>
+                <div className={styles.divider}>
+                    <span className={styles.dividerText}>Or continue with</span>
+                </div>
 
-                <hr style={{ margin: "20px 0" }} />
+                <div className={styles.socialContainer}>
+                    <button className={styles.socialButton} onClick={() => onSocialLogin('google')}>
+                        <Image src="/icons/google.svg" alt="Google logo" width={20} height={20} />
+                        <span>Google</span>
+                    </button>
 
-                <button
-                    className={styles.socialButton}
-                    onClick={() => onSocialLogin("google")}
-                >
-                    <FaGoogle style={{ marginRight: 6 }} />
-                    Login con Google
-                </button>
+                    <button className={styles.socialButton} onClick={() => onSocialLogin('github')}>
+                        <Image src="/icons/github.svg" alt="GitHub logo" width={20} height={20} />
+                        <span>GitHub</span>
+                    </button>
 
-                <button
-                    className={styles.socialButton}
-                    onClick={() => onSocialLogin("github")}
-                >
-                    <FaGithub style={{ marginRight: 6 }} />
-                    Login con GitHub
-                </button>
+                    <button className={styles.socialButton} onClick={() => onSocialLogin('discord')}>
+                        <Image src="/icons/discord.svg" alt="Discord logo" width={20} height={20} />
+                        <span>Discord</span>
+                    </button>
+                </div>
 
-                <button
-                    className={styles.socialButton}
-                    onClick={() => onSocialLogin("discord")}
-                >
-                    <FaDiscord style={{ marginRight: 6 }} />
-                    Login con Discord
-                </button>
 
-                <p style={{ textAlign: "center", marginTop: 20 }}>
-                    Non hai un account?{" "}
-                    <Link href="/auth/register" style={{ color: "#1d3557" }}>
-                        Registrati
+                <p className={styles.registerAdv}>
+                    Don't have an account?{" "}
+                    <Link href="/auth/register" className={styles.link}>
+                        Sign up
                     </Link>
                 </p>
             </div>

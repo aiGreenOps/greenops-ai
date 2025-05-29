@@ -62,7 +62,10 @@ export default function AdminDashboard() {
         fetchPending();
 
         socket.on("newPendingManager", (user: PendingUser) => {
-            setPending((prev) => [user, ...prev]);
+            setPending((prev) => {
+                const exists = prev.some((u) => u._id === user._id);
+                return exists ? prev : [user, ...prev];
+            });
         });
 
         return () => {

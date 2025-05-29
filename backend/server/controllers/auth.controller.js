@@ -449,7 +449,7 @@ exports.resetPassword = async (req, res) => {
         }
 
         const user = await User.findById(payload.userId);
-        if (!user) return res.status(404).json({ message: "Utente non trovato" });
+        if (!user) return res.status(404).json({ message: "Utente non trovato." });
 
         user.passwordHash = await bcrypt.hash(password, 10);
         await user.save();
