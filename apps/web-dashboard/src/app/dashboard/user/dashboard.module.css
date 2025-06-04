@@ -1,0 +1,87 @@
+.wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin: 0 13.9rem;
+    padding-top: 2rem;
+}
+
+.firstContainer {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.sensorParameters {
+    background: var(--primary-color);
+    flex: 1;
+    padding: 1rem;
+    display: flex;
+    flex-direction: row;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.08);
+}
+
+.sensorParameters:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.iconParameter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    height: 2.75rem;
+    width: 2.75rem;
+    font-size: 1.5rem;
+    border-radius: 0.5rem;
+}
+
+.temp {
+    background: rgb(249, 115, 22);
+}
+
+.hum {
+    background: rgb(59, 130, 246);
+}
+
+.soil {
+    background: rgb(45, 106, 79);
+}
+
+.brigh {
+    background: rgb(99, 102, 241);
+}
+
+.parameterInfo {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin-left: 1rem;
+}
+
+.parameterName {
+    margin: 0;
+    color: var(--text-secondary-color);
+    font-weight: 400;
+}
+
+.parameterValue {
+    padding-top: 0.5rem;
+    display: flex;
+    align-items: end;
+    flex-direction: row;
+}
+
+.value {
+    font-weight: 600;
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.estimator {
+    margin: 0;
+}

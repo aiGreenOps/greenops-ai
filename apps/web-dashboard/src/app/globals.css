@@ -22,7 +22,12 @@ body {
     --input-hover: rgb(243, 244, 246);
     --text-primary-color: rgb(0, 0, 0);
     --text-secondary-color: rgb(75, 85, 99);
+    --nav-item-active: rgb(236, 253, 245);
+    --nav-item-hover: rgb(243, 244, 246);
+    --nav-text-active: rgb(75, 85, 99);
+    --text-third-color: rgb(8, 92, 68);
 }
+
 
 .dark {
     --background-color: rgb(17, 24, 39);
@@ -33,4 +38,8 @@ body {
     --input-hover: rgb(75, 85, 99);
     --text-primary-color: rgb(255, 255, 255);
     --text-secondary-color: rgb(160, 164, 172);
+    --nav-item-active: rgb(55, 65, 81);
+    --nav-item-hover: rgb(55, 65, 81);
+    --nav-text-active: rgb(60, 207, 151);
+    --text-third-color: rgb(60, 207, 151);
 }

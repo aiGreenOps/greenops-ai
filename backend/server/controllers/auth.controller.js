@@ -260,6 +260,7 @@ exports.login = async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        profilePicture: user.profilePicture || null
     });
 
     // 4) Branch ADMIN (web only, perché mobile viene bloccato sopra)
@@ -357,9 +358,8 @@ exports.logoutAdmin = (req, res) => {
 };
 
 exports.me = (req, res) => {
-    // req.user è il payload estratto da JWT: userId, role, firstName, lastName, email
-    // Carichiamo però dal DB lo stato della 2FA
-    User.findById(req.user.userId).select('firstName lastName email role twoFactorEnabled')
+    User.findById(req.user.userId)
+        .select('firstName lastName email role twoFactorEnabled profilePicture status')
         .then(user => {
             if (!user) return res.status(404).json({ message: 'Utente non trovato' });
             res.json({ user });
@@ -369,6 +369,7 @@ exports.me = (req, res) => {
             res.status(500).json({ message: 'Errore interno' });
         });
 };
+
 
 const PasswordResetToken = require("../models/passwordResetToken.model");
 

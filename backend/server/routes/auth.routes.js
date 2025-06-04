@@ -78,7 +78,8 @@ router.get(
             role: req.user.role,
             firstName: req.user.firstName,
             lastName: req.user.lastName,
-            email: req.user.email
+            email: req.user.email,
+            profilePicture: req.user.profilePicture || null
         }, jwtSecret, { expiresIn: jwtExpire });
 
         const isAdmin = req.user.role === "admin";
@@ -99,6 +100,7 @@ router.get(
                 firstName: req.user.firstName,
                 lastName: req.user.lastName,
                 email: req.user.email,
+                profilePicture: req.user.profilePicture || null
             });
             res.redirect(`http://localhost:3000/auth/login?oauthStatus=${req.user.status}`);
         } else {
@@ -120,7 +122,8 @@ router.get(
             role: req.user.role,
             firstName: req.user.firstName,
             lastName: req.user.lastName,
-            email: req.user.email
+            email: req.user.email,
+            profilePicture: req.user.profilePicture || null
         }, jwtSecret, { expiresIn: jwtExpire });
 
 
@@ -142,6 +145,7 @@ router.get(
                 firstName: req.user.firstName,
                 lastName: req.user.lastName,
                 email: req.user.email,
+                profilePicture: req.user.profilePicture || null
             });
             res.redirect(`http://localhost:3000/auth/login?oauthStatus=${req.user.status}`);
         } else {
@@ -161,7 +165,8 @@ router.get(
             role: req.user.role,
             firstName: req.user.firstName,
             lastName: req.user.lastName,
-            email: req.user.email
+            email: req.user.email,
+            profilePicture: req.user.profilePicture || null
         }, jwtSecret, { expiresIn: jwtExpire });
 
         const isAdmin = req.user.role === "admin";
@@ -182,6 +187,7 @@ router.get(
                 firstName: req.user.firstName,
                 lastName: req.user.lastName,
                 email: req.user.email,
+                profilePicture: req.user.profilePicture || null
             });
             res.redirect(`http://localhost:3000/auth/login?oauthStatus=${req.user.status}`);
         } else {

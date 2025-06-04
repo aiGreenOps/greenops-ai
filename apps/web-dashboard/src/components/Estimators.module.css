@@ -1,0 +1,18 @@
+.estimator {
+    padding-bottom: 0.1rem;
+    padding-left: 0.5rem;
+    font-size: 0.8rem;
+    margin: 0;
+}
+
+.positive {
+    color: #16a34a;
+}
+
+.negative {
+    color: #dc2626;
+}
+
+.neutral {
+    color: #facc15;
+}
