@@ -13,6 +13,7 @@ const UserSchema = new mongoose.Schema({
     phone: { type: String, unique: true, sparse: true },
     fiscalCode: { type: String, unique: true, sparse: true },
     role: { type: String, enum: ["admin", "manager", "maintainer", "employee"], default: "manager" },
+    profilePicture: { type: String, default: null },
     emailVerified: { type: Boolean, default: false },
     status: {
         type: String,

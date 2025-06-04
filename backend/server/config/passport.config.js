@@ -16,6 +16,10 @@ passport.use(new DiscordStrategy({
             const email = profile.email || `${profile.id}@discord.fake`;
             let user = await User.findOne({ email });
             let isNew = false;
+            const avatarUrl = profile.avatar
+                ? `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.png`
+                : null;
+
 
             if (!user) {
                 user = await User.create({
@@ -27,7 +31,8 @@ passport.use(new DiscordStrategy({
                     emailVerified: true,
                     passwordHash: "-",
                     authProvider: "discord",
-                    providerId: profile.id
+                    providerId: profile.id,
+                    profilePicture: avatarUrl
                 });
                 isNew = true;
             }
@@ -51,6 +56,7 @@ passport.use(new GitHubStrategy({
             const email = profile.emails?.[0]?.value || `${profile.username}@github.fake`;
             let user = await User.findOne({ email });
             let isNew = false;
+            const avatarUrl = profile.photos?.[0]?.value || null;
 
             if (!user) {
                 user = await User.create({
@@ -62,7 +68,8 @@ passport.use(new GitHubStrategy({
                     emailVerified: true,
                     passwordHash: "-",
                     authProvider: "github",
-                    providerId: profile.id
+                    providerId: profile.id,
+                    profilePicture: avatarUrl
                 });
                 isNew = true;
             }
@@ -86,6 +93,7 @@ passport.use(new GoogleStrategy({
             const email = profile.emails?.[0]?.value;
             let user = await User.findOne({ email });
             let isNew = false;
+            const avatarUrl = profile.photos?.[0]?.value || null;
 
             if (!user) {
                 user = await User.create({
@@ -97,7 +105,8 @@ passport.use(new GoogleStrategy({
                     emailVerified: true,
                     passwordHash: "-",
                     authProvider: "google",
-                    providerId: profile.id
+                    providerId: profile.id,
+                    profilePicture: avatarUrl
                 });
                 isNew = true;
             }

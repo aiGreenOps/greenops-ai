@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import styles from "../login/login.module.css";
 import { toast } from "react-toastify";
 
@@ -9,11 +9,12 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 export default function ResetPasswordPage() {
     const params = useSearchParams();
+    const router = useRouter();
     const token = params.get("token");
 
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
-    const [tokenValid, setTokenValid] = useState<boolean | null>(null); // null = loading, true = ok, false = invalid
+    const [tokenValid, setTokenValid] = useState<boolean | null>(null);
 
     useEffect(() => {
         const checkToken = async () => {
@@ -43,11 +44,9 @@ export default function ResetPasswordPage() {
             });
             const data = await res.json();
 
-            if (!res.ok) throw new Error(data.message || "Errore");
-
-            toast.success("✅ Password aggiornata, ora puoi accedere.");
-        } catch (err: any) {
-            toast.error(err.message);
+            router.push(`/auth/notify-reset-password?status=${data.status}`);
+        } catch (err) {
+            toast.error("Unexpected error. Try again.");
         } finally {
             setLoading(false);
         }
@@ -57,9 +56,9 @@ export default function ResetPasswordPage() {
         return (
             <main className={styles.page}>
                 <div className={styles.formContainer}>
-                    <h1>Link non valido</h1>
-                    <p style={{ textAlign: "center", color: "red" }}>
-                        Questo link è scaduto o è già stato utilizzato.
+                    <h1 className={styles.formTitle}>Invalid Link</h1>
+                    <p className={styles.formParag} style={{ color: "red" }}>
+                        This reset link is invalid or has already been used.
                     </p>
                 </div>
             </main>
@@ -70,7 +69,7 @@ export default function ResetPasswordPage() {
         return (
             <main className={styles.page}>
                 <div className={styles.formContainer}>
-                    <h1>Verifica del link…</h1>
+                    <h1 className={styles.formTitle}>Verifying link…</h1>
                 </div>
             </main>
         );
@@ -79,21 +78,26 @@ export default function ResetPasswordPage() {
     return (
         <main className={styles.page}>
             <div className={styles.formContainer}>
-                <h1>Imposta nuova password</h1>
+                <h1 className={styles.formTitle}>Set a new password</h1>
+                <p className={styles.formParag}>
+                    Choose a strong password to secure your account.
+                </p>
                 <form onSubmit={handleReset}>
                     <div className={styles.inputGroup}>
-                        <label htmlFor="password">Nuova password:</label>
+                        <div className={styles.labels}>
+                            <label htmlFor="password">New password</label>
+                        </div>
                         <input
                             id="password"
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
-                            placeholder="Inserisci nuova password"
+                            placeholder="Enter new password"
                         />
                     </div>
                     <button className={styles.submitButton} type="submit" disabled={loading}>
-                        {loading ? "Reimpostazione…" : "Reimposta password"}
+                        {loading ? "Resetting…" : "Reset password"}
                     </button>
                 </form>
             </div>

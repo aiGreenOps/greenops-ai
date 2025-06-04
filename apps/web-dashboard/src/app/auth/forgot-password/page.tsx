@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from "react";
-import styles from "../login/login.module.css";
+import styles from "../login/login.module.css"; // stessa classe della login
 import { toast } from "react-toastify";
+import Link from "next/link";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -47,22 +48,39 @@ export default function ForgotPasswordPage() {
     return (
         <main className={styles.page}>
             <div className={styles.formContainer}>
-                <h1>Recupera Password</h1>
+                <h1 className={styles.formTitle}>Recupera password</h1>
+                <p className={styles.formParag}>
+                    Inserisci la tua email per ricevere il link di recupero
+                </p>
+
                 <form onSubmit={handleSubmit}>
                     <div className={styles.inputGroup}>
-                        <label htmlFor="email">Email:</label>
+                        <div className={styles.labels}>
+                            <label htmlFor="email">Email</label>
+                        </div>
                         <input
                             id="email"
-                            type="text" // ← niente validazione HTML
+                            type="text"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            placeholder="Inserisci la tua email"
+                            placeholder="mail@example.com"
                         />
                     </div>
-                    <button className={styles.submitButton} type="submit" disabled={loading}>
-                        {loading ? "Invio..." : "Invia Link di Recupero"}
+
+                    <button
+                        type="submit"
+                        className={styles.submitButton}
+                        disabled={loading}
+                    >
+                        {loading ? "Invio..." : "Invia link di recupero"}
                     </button>
                 </form>
+                <p className={`${styles.registerAdv} ${styles.advMoreSpace}`}>
+                    Ricordi la password?{" "}
+                    <Link href="/auth/login" className={styles.link}>
+                        Accedi
+                    </Link>
+                </p>
             </div>
         </main>
     );

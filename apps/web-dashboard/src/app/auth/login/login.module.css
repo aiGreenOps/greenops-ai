@@ -170,3 +170,7 @@
     color: var(--text-secondary-color);
     font-size: 0.875rem;
 }
+
+.advMoreSpace {
+    padding-top: 0.5rem;
+}

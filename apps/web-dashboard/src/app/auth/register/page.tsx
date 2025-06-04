@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -27,7 +27,6 @@ export default function RegisterPage() {
   const [isInvited, setIsInvited] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Se arrivo con invitationToken, decodificalo manualmente
   useEffect(() => {
     if (invitationToken) {
       try {
@@ -35,7 +34,7 @@ export default function RegisterPage() {
         setFormData((f) => ({ ...f, email: payload.email }));
         setIsInvited(true);
       } catch {
-        console.warn("Token di invito non valido");
+        console.warn("Invalid invitation token");
       }
     }
   }, [invitationToken]);
@@ -47,11 +46,6 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (formData.password !== formData.confirmPassword) {
-      toast.error("Le password non corrispondono");
-      return;
-    }
 
     setLoading(true);
     try {
@@ -75,38 +69,30 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        toast.error(data.message || "Registrazione fallita");
+        toast.error(data.message || "Registration failed");
         return;
       }
 
-      toast.success(data.message || "Registrazione completata");
-      // 🔁 Rimuovi il redirect automatico
-      // router.push("/auth/login");
-
+      toast.success(data.message || "Registration successful");
+      // No redirect for now
     } catch (err: any) {
-      toast.error("Errore di rete o server non raggiungibile");
+      toast.error("Network error or server not reachable");
     } finally {
       setLoading(false);
     }
   };
 
-  const { password, confirmPassword } = formData;
-  const requirements = {
-    length: password.length >= 8,
-    upper: /[A-Z]/.test(password),
-    number: /[0-9]/.test(password),
-    special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
-  };
-  const match = password === confirmPassword && confirmPassword.length > 0;
-
   return (
     <main className={styles.page}>
       <div className={styles.formContainer}>
-        <h1 style={{ textAlign: "center" }}>Registrazione</h1>
+        <h1 className={styles.formTitle}>Create your account</h1>
+        <p className={styles.formParag}>Join us to manage green spaces effectively</p>
 
         <form onSubmit={handleSubmit}>
           <div className={styles.inputGroup}>
-            <label htmlFor="firstName">Nome</label>
+            <div className={styles.labels}>
+              <label htmlFor="firstName">First name</label>
+            </div>
             <input
               id="firstName"
               name="firstName"
@@ -118,7 +104,9 @@ export default function RegisterPage() {
           </div>
 
           <div className={styles.inputGroup}>
-            <label htmlFor="lastName">Cognome</label>
+            <div className={styles.labels}>
+              <label htmlFor="lastName">Last name</label>
+            </div>
             <input
               id="lastName"
               name="lastName"
@@ -130,7 +118,9 @@ export default function RegisterPage() {
           </div>
 
           <div className={styles.inputGroup}>
-            <label htmlFor="email">Email</label>
+            <div className={styles.labels}>
+              <label htmlFor="email">Email</label>
+            </div>
             <input
               id="email"
               name="email"
@@ -144,7 +134,9 @@ export default function RegisterPage() {
           </div>
 
           <div className={styles.inputGroup}>
-            <label htmlFor="phone">Telefono</label>
+            <div className={styles.labels}>
+              <label htmlFor="phone">Phone number</label>
+            </div>
             <input
               id="phone"
               name="phone"
@@ -156,7 +148,9 @@ export default function RegisterPage() {
           </div>
 
           <div className={styles.inputGroup}>
-            <label htmlFor="fiscalCode">Codice Fiscale</label>
+            <div className={styles.labels}>
+              <label htmlFor="fiscalCode">Tax code</label>
+            </div>
             <input
               id="fiscalCode"
               name="fiscalCode"
@@ -168,7 +162,9 @@ export default function RegisterPage() {
           </div>
 
           <div className={styles.inputGroup}>
-            <label htmlFor="password">Password</label>
+            <div className={styles.labels}>
+              <label htmlFor="password">Password</label>
+            </div>
             <input
               id="password"
               name="password"
@@ -179,58 +175,26 @@ export default function RegisterPage() {
             />
           </div>
 
-          <div className={styles.inputGroup}>
-            <label htmlFor="confirmPassword">Conferma Password</label>
-            <input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              required
-              value={formData.confirmPassword}
-              onChange={handleChange}
-            />
-          </div>
-
-          <ul className={styles.requirements}>
-            <li className={requirements.length ? styles.valid : ""}>
-              Minimo 8 caratteri
-            </li>
-            <li className={requirements.upper ? styles.valid : ""}>
-              Una lettera maiuscola
-            </li>
-            <li className={requirements.number ? styles.valid : ""}>
-              Un numero
-            </li>
-            <li className={requirements.special ? styles.valid : ""}>
-              Un carattere speciale
-            </li>
-            <li className={match ? styles.valid : ""}>Password confermata</li>
-          </ul>
-
           <button
             type="submit"
             className={styles.submitButton}
-            disabled={
-              loading ||
-              !Object.values(requirements).every(Boolean) ||
-              !match
-            }
+            disabled={loading}
           >
             {loading
-              ? "Invio…"
+              ? "Submitting…"
               : (
                 <>
                   <FaUserPlus style={{ marginRight: 6 }} />
-                  Registrati
+                  Register
                 </>
               )}
           </button>
         </form>
 
-        <p style={{ textAlign: "center", marginTop: 20 }}>
-          Hai già un account?{" "}
-          <Link href="/auth/login" style={{ color: "#1d3557" }}>
-            Accedi
+        <p className={styles.registerAdv}>
+          Already have an account?{" "}
+          <Link href="/auth/login" className={styles.link}>
+            Sign in
           </Link>
         </p>
       </div>

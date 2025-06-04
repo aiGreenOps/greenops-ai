@@ -187,22 +187,23 @@ exports.verifyEmail = async (req, res) => {
         const { email } = jwt.verify(token, jwtSecret);
         const user = await User.findOne({ email });
         if (!user) {
-            return res.status(404).json({ message: "Utente non trovato" });
+            return res.redirect(`${process.env.FRONTEND_URL}/auth/notify-verify-email?status=notfound`);
         }
+
         if (user.emailVerified) {
-            return res.status(400).json({ message: "Email già verificata" });
+            return res.redirect(`${process.env.FRONTEND_URL}/auth/notify-verify-email?status=already`);
         }
 
         user.emailVerified = true;
-        // se dipendente → active, se manutentore → pending, se manager → pending
+
         if (user.role === "employee") {
             user.status = "active";
         } else if (user.role === "maintainer" || user.role === "manager") {
             user.status = "pending";
         }
+
         await user.save();
 
-        // notifica real-time al canale giusto
         const io = req.app.get("io");
         const payload = {
             _id: user._id,
@@ -210,23 +211,19 @@ exports.verifyEmail = async (req, res) => {
             lastName: user.lastName,
             email: user.email,
         };
+
         if (user.role === "manager") {
             io.emit("newPendingManager", payload);
         } else if (user.role === "maintainer") {
             io.emit("newPendingMaintainer", payload);
         }
 
-        return res.status(200).json({
-            message:
-                user.status === "active"
-                    ? "✅ Email verificata. Puoi ora effettuare il login."
-                    : "✅ Email verificata. In attesa di approvazione.",
-        });
+        const finalStatus = user.status === "active" ? "success" : "pending";
+        return res.redirect(`${process.env.FRONTEND_URL}/auth/notify-verify-email?status=${finalStatus}`);
     } catch {
-        return res.status(400).json({ message: "❌ Link non valido o scaduto." });
+        return res.redirect(`${process.env.FRONTEND_URL}/auth/notify-verify-email?status=invalid`);
     }
 };
-
 
 exports.login = async (req, res) => {
     const { email, password, deviceId } = req.body;
@@ -430,8 +427,6 @@ exports.forgotPassword = async (req, res) => {
     return res.status(200).json({ message: "Se esiste un account, riceverai un'email." });
 };
 
-
-
 exports.resetPassword = async (req, res) => {
     const { token, password } = req.body;
 
@@ -445,11 +440,13 @@ exports.resetPassword = async (req, res) => {
         });
 
         if (!resetRecord) {
-            return res.status(400).json({ message: "❌ Link non valido o già usato" });
+            return res.status(400).json({ status: "invalid" });
         }
 
         const user = await User.findById(payload.userId);
-        if (!user) return res.status(404).json({ message: "Utente non trovato." });
+        if (!user) {
+            return res.status(404).json({ status: "notfound" });
+        }
 
         user.passwordHash = await bcrypt.hash(password, 10);
         await user.save();
@@ -457,11 +454,12 @@ exports.resetPassword = async (req, res) => {
         resetRecord.used = true;
         await resetRecord.save();
 
-        return res.status(200).json({ message: "✅ Password aggiornata con successo" });
+        return res.status(200).json({ status: "success" });
     } catch {
-        return res.status(400).json({ message: "❌ Link non valido o scaduto" });
+        return res.status(400).json({ status: "expired" });
     }
 };
+
 
 exports.checkResetToken = async (req, res) => {
     const { token } = req.query;
