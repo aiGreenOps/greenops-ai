@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import Image from 'next/image';
+import { SensorProvider } from '@/context/SensorContext';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -22,7 +23,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { href: '/dashboard/user/reports', label: 'Reports', icon: <FiBarChart2 /> },
         { href: '/dashboard/user/settings', label: 'Settings', icon: <FiSettings /> },
     ];
-
 
     const pageName = (() => {
         const lastSegment = pathname.split('/').filter(Boolean).pop();
@@ -124,7 +124,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
                 </header>
 
-                <main className={styles.main}>{children}</main>
+                <SensorProvider>
+                    <main className={styles.main}>{children}</main>
+                </SensorProvider>
             </div>
         </div>
     );

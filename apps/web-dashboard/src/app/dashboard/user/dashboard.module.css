@@ -49,11 +49,11 @@
 }
 
 .soil {
-    background: rgb(45, 106, 79);
+    background: rgb(28, 166, 68);
 }
 
 .brigh {
-    background: rgb(99, 102, 241);
+    background: rgb(212, 0, 255);
 }
 
 .parameterInfo {
@@ -72,7 +72,7 @@
 .parameterValue {
     padding-top: 0.5rem;
     display: flex;
-    align-items: end;
+    align-items: flex-end;
     flex-direction: row;
 }
 
@@ -80,8 +80,193 @@
     font-weight: 600;
     font-size: 1.5rem;
     margin: 0;
+    color: var(--text-primary-color);
 }
 
 .estimator {
     margin: 0;
+}
+
+.secondContainer {
+    box-sizing: border-box;
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+}
+
+.leftContainer {
+    display: flex;
+    gap: 1rem;
+    flex-direction: column;
+    flex: 2;
+}
+
+.aiReportContainer {
+    background: var(--primary-color);
+    padding: 1rem;
+    height: 12rem;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.08);
+}
+
+.areaTextReport {
+    flex: 1;
+    padding: 1rem;
+    margin-top: 1rem;
+    border-radius: 0.25rem;
+    background: var(--nav-item-hover);
+    overflow-y: auto;
+    max-height: 100%;
+    box-sizing: border-box;
+    /* ✅ mantiene padding anche con overflow */
+}
+
+.areaTextReport::-webkit-scrollbar {
+    display: none;
+}
+
+.textReport {
+    color: var(--text-secondary-color);
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+.loadingSkeleton {
+    height: 8rem;
+    width: 100%;
+    border-radius: 0.25rem;
+    background: linear-gradient(to right,
+            var(--nav-item-hover) 0%,
+            var(--primary-color) 20%,
+            var(--nav-item-hover) 40%,
+            var(--nav-item-hover) 100%);
+    background-size: 2000px 100%;
+    animation: shimmer 1.5s infinite linear;
+    color: transparent;
+    /* nasconde il testo */
+}
+
+
+.sensorReadings {
+    background: var(--primary-color);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.08);
+}
+
+.titleContainer {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-primary-color);
+}
+
+.readingsChart {
+    margin-top: 1rem;
+}
+
+.toggleOptions {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+}
+
+.toggleOptions .option {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 100%;
+    cursor: pointer;
+    border: 0;
+}
+
+.toggleOptions .option:hover {
+    transform: scale3d(1.1, 1.1, 1.1);
+}
+
+.toggleOptions .temperature.active {
+    background: rgb(249, 115, 22);
+}
+
+.toggleOptions .humidityPct.active {
+    background: rgb(59, 130, 246);
+}
+
+.toggleOptions .rainPct.active {
+    background: rgb(28, 166, 68);
+}
+
+.toggleOptions .lightPct.active {
+    background: rgb(212, 0, 255);
+}
+
+.toggleOptions .temperature {
+    background: rgba(249, 115, 22, 0.3);
+}
+
+.toggleOptions .humidityPct {
+    background: rgba(59, 130, 246, 0.3);
+}
+
+.toggleOptions .rainPct {
+    background: rgba(28, 166, 68, 0.3);
+}
+
+.toggleOptions .lightPct {
+    background: rgba(212, 0, 255, 0.3);
+}
+
+.recentAlerts {
+    flex: 1;
+    background: var(--primary-color);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.08);
+}
+
+.headerContainer {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.notifyAlerts {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 1rem;
+    color: var(--text-notify);
+    background-color: var(--toggle-notify);
+}
+
+.notifyNumber {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 500;
 }

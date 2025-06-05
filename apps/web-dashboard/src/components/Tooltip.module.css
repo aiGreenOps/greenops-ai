@@ -1,0 +1,18 @@
+.tooltipContainer {
+    padding: 1rem;
+    background: var(--primary-color);
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--border-color);
+    margin: 1rem;
+}
+
+.orario {
+    margin: 0;
+    margin-bottom: 1rem;
+}
+
+.entryTool {
+    margin: 0;
+    padding-bottom: 0.3rem;
+}

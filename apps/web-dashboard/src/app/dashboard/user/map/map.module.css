@@ -1,0 +1,139 @@
+.wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin: 0 13.9rem;
+    padding-top: 2rem;
+}
+
+.firstContainer {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+}
+
+.secondContainer {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+}
+
+.titleContainer {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+}
+
+.title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-primary-color);
+}
+
+.subTitle {
+    font-size: 0.875rem;
+    margin: 0;
+    font-weight: 400;
+    margin-top: 0.25rem;
+    color: var(--text-secondary-color);
+}
+
+.buttonContainer {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.button {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.active {
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.15);
+    font-weight: 600;
+}
+
+/* Stili specifici */
+.all {
+    background-color: #2f5e47;
+    color: white;
+    border-color: #2f5e47;
+}
+
+.healthy {
+    background-color: white;
+    color: #2ecc71;
+    border: 1px solid #2ecc71;
+}
+
+.warning {
+    background-color: white;
+    color: #f1c40f;
+    border: 1px solid #f1c40f;
+}
+
+.critical {
+    background-color: white;
+    color: #e74c3c;
+    border: 1px solid #e74c3c;
+}
+
+.button:hover {
+    opacity: 0.9;
+}
+
+/* .titleContainer {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid red;
+} */
+
+
+.mapContainer {
+    background: var(--primary-color);
+    flex: 2;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.08);
+}
+
+.map {
+    height: 30rem;
+    border-radius: 0.5rem;
+    width: 100%;
+    background: var(--nav-item-hover);
+}
+
+.detailsContainer {
+    background: var(--primary-color);
+    flex: 1;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.08);
+}
+
+
+.titleDetails {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-primary-color);
+}

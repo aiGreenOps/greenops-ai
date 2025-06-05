@@ -26,6 +26,8 @@ body {
     --nav-item-hover: rgb(243, 244, 246);
     --nav-text-active: rgb(75, 85, 99);
     --text-third-color: rgb(8, 92, 68);
+    --toggle-notify: rgb(254, 226, 226);
+    --text-notify: rgb(153, 27, 27);
 }
 
 
@@ -42,4 +44,6 @@ body {
     --nav-item-hover: rgb(55, 65, 81);
     --nav-text-active: rgb(60, 207, 151);
     --text-third-color: rgb(60, 207, 151);
+    --toggle-notify: rgb(153, 27, 27);
+    --text-notify: rgb(254, 226, 226);
 }
