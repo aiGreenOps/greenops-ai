@@ -33,4 +33,21 @@ router.get('/today', async (req, res) => {
     }
 });
 
+router.get('/latest/:stationId', async (req, res) => {
+    try {
+        const { stationId } = req.params;
+        const latest = await SensorData.findOne({ stationId })
+            .sort({ timestamp: -1 });
+
+        if (!latest) {
+            return res.status(404).json({ message: 'No data found' });
+        }
+
+        res.json(latest);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
 module.exports = router;

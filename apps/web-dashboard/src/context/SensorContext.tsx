@@ -11,18 +11,19 @@ export type AggregatedSensor = {
     timestamp: string;
 };
 
-type Station = {
+type StationSensorData = {
     stationId: string;
     temperature: number;
     humidity: number;
     light: number;
     rain: number;
     timestamp: string;
+    _id?: string;
 };
 
 type SensorPayload = {
     aggregated: AggregatedSensor;
-    stations: Station[];
+    stations: StationSensorData[];
 };
 
 type SensorContextValue = {
@@ -31,7 +32,6 @@ type SensorContextValue = {
     today: AggregatedSensor[];
 };
 
-
 const SensorContext = createContext<SensorContextValue | null>(null);
 
 export const SensorProvider = ({ children }: { children: React.ReactNode }) => {
@@ -39,11 +39,9 @@ export const SensorProvider = ({ children }: { children: React.ReactNode }) => {
     const [sensorHistory, setSensorHistory] = useState<AggregatedSensor[]>([]);
     const [todayData, setTodayData] = useState<AggregatedSensor[]>([]);
 
-
     useEffect(() => {
         const fetchInitial = async () => {
             try {
-                // 1. Ultimo valore aggregato
                 const resLatest = await fetch("http://localhost:3001/api/sensors/latest", {
                     credentials: "include"
                 });
@@ -52,47 +50,42 @@ export const SensorProvider = ({ children }: { children: React.ReactNode }) => {
                     setSensorData(latest);
                 }
 
-                // 2. Tutti i valori della giornata
                 const resToday = await fetch("http://localhost:3001/api/sensors/today", {
                     credentials: "include"
                 });
                 if (resToday.ok) {
                     const today: AggregatedSensor[] = await resToday.json();
                     setSensorHistory(today);
-                    setTodayData(today);                    
+                    setTodayData(today);
                 }
             } catch (err) {
-                console.error("❌ Errore fetch iniziale o today:", err);
+                console.error("❌ Errore fetch iniziale:", err);
             }
         };
 
         fetchInitial();
 
-        const socket = io("http://localhost:3001", {
-            withCredentials: true
-        });
+        const socket = io("http://localhost:3001", { withCredentials: true });
 
         socket.on("sensor-update", (data: SensorPayload) => {
             setSensorData(data);
+            setSensorHistory(prev =>
+                prev.some(p => p.timestamp === data.aggregated.timestamp)
+                    ? prev
+                    : [...prev, data.aggregated]
+            );
 
-            // Aggiungi all'elenco solo se non esiste già
-            setSensorHistory(prev => {
-                const alreadyInList = prev.some(p => p.timestamp === data.aggregated.timestamp);
-                if (alreadyInList) return prev;
-                return [...prev, data.aggregated];
-            });
-
-            setTodayData(prev => {
-                const already = prev.find(d => d.timestamp === data.aggregated.timestamp);
-                return already ? prev : [...prev, data.aggregated];
-            });
+            setTodayData(prev =>
+                prev.some(p => p.timestamp === data.aggregated.timestamp)
+                    ? prev
+                    : [...prev, data.aggregated]
+            );
         });
 
         return () => {
             socket.disconnect();
         };
     }, []);
-
 
     return (
         <SensorContext.Provider value={{ current: sensorData, history: sensorHistory, today: todayData }}>

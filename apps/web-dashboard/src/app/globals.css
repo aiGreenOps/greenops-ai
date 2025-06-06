@@ -28,6 +28,9 @@ body {
     --text-third-color: rgb(8, 92, 68);
     --toggle-notify: rgb(254, 226, 226);
     --text-notify: rgb(153, 27, 27);
+    --button-primary: rgb(45, 106, 79);
+    --button-primary-hover: rgb(8, 92, 68);
+
 }
 
 
@@ -46,4 +49,6 @@ body {
     --text-third-color: rgb(60, 207, 151);
     --toggle-notify: rgb(153, 27, 27);
     --text-notify: rgb(254, 226, 226);
+    --button-primary: rgb(8, 92, 68);
+    --button-primary-hover: rgb(45, 106, 79);
 }

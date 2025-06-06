@@ -1,4 +1,3 @@
-// index.js
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
@@ -11,16 +10,16 @@ require("./config/passport.config");
 
 const connectDB = require("./config/db.config");
 const seedAdmin = require("./scripts/seedAdmin");
+
 const authRoutes = require("./routes/auth.routes");
 const adminRoutes = require("./routes/admin.routes");
 const sensorRoutes = require('./routes/sensors.routes');
 const managerRoutes = require("./routes/manager.routes");
 const aiRoutes = require("./routes/ai.routes");
+const stationRoutes = require('./routes/station.routes');
 
-
-// PRIMA: require del router + handler
 const { router: twoFaRouter, authenticateHandler } = require("./routes/2fa.routes");
-const { protect } = require("./middleware/auth.middleware"); // o path corretto
+const { protect } = require("./middleware/auth.middleware");
 
 const app = express();
 const server = http.createServer(app);
@@ -29,19 +28,16 @@ const io = require("socket.io")(server, {
 });
 app.set("io", io);
 
-// INTEGRAZIONE SENSORI
+// MODELS & SENSOR
 const sensorReader = require("../../iot/sensorReader");
 const SensorData = require("./models/sensorData.model");
 const AggregatedSensorData = require('./models/aggregatedSensorData.model');
-
+const Station = require("./models/station.model");
 const generateSimulatedData = require("./utils/generateSimulatedData");
 
-
+// MIDDLEWARE
 app.use(cors({
-    origin: [
-        "http://localhost:3000",
-        "http://192.168.1.183:3000"
-    ],
+    origin: ["http://localhost:3000", "http://192.168.1.183:3000"],
     credentials: true
 }));
 app.use(passport.initialize());
@@ -49,22 +45,38 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 app.use(cookieParser());
 
-// le tue altre route
+// ROUTES
 app.use("/api/admin", adminRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/manager", managerRoutes);
 app.use('/api/sensors', sensorRoutes);
 app.use("/api/ai", aiRoutes);
-
-// ** CHALLENGE 2FA ** (senza cookie)
+app.use('/api/stations', stationRoutes);
 app.post("/api/2fa/authenticate", authenticateHandler);
-
-// ** SETUP / VERIFY 2FA ** (con cookie)
 app.use("/api/2fa", protect, twoFaRouter);
 
 connectDB()
     .then(async () => {
         await seedAdmin();
+
+        // ✅ Mappa stazioni tramite nome
+        const stations = await Station.find();
+        if (stations.length !== 4) {
+            throw new Error("⚠️ Devi avere esattamente 4 stazioni nel DB: North, South, East, West");
+        }
+
+        const stationMap = {
+            North: stations.find(s => s.name.toLowerCase().includes('north'))?._id,
+            East: stations.find(s => s.name.toLowerCase().includes('east'))?._id,
+            South: stations.find(s => s.name.toLowerCase().includes('south'))?._id,
+            West: stations.find(s => s.name.toLowerCase().includes('west'))?._id,
+        };
+
+        if (Object.values(stationMap).some(v => !v)) {
+            console.error("❌ Nomi stazioni nel DB non corrispondono a North/East/South/West");
+            console.log("🧭 stationMap:", stationMap);
+            process.exit(1);
+        }
 
         let lastSaveTimestamp = 0;
 
@@ -83,23 +95,25 @@ connectDB()
             }
 
             const now = Date.now();
-            if (now - lastSaveTimestamp < 60000) {
-                return;
-            }
+            if (now - lastSaveTimestamp < 60000) return;
 
             const timestamp = new Date();
 
-            // 1. Dati stazioni
-            const realEntry = { ...parsed, stationId: 'station-1', timestamp };
-            const simulatedEntries = generateSimulatedData(parsed).map((s, i) => ({
-                ...s,
-                stationId: `station-${i + 2}`,
+            const realEntry = {
+                ...parsed,
+                stationId: stationMap["North"],
                 timestamp
-            }));
+            };
+
+            const simulatedRaw = generateSimulatedData(parsed);
+            const simulatedEntries = [
+                { ...simulatedRaw[0], stationId: stationMap["East"], timestamp },
+                { ...simulatedRaw[1], stationId: stationMap["South"], timestamp },
+                { ...simulatedRaw[2], stationId: stationMap["West"], timestamp }
+            ];
 
             const allEntries = [realEntry, ...simulatedEntries];
 
-            // 2. Aggregati
             const avg = {
                 temperature: +(allEntries.reduce((a, b) => a + b.temperature, 0) / allEntries.length).toFixed(1),
                 humidity: +(allEntries.reduce((a, b) => a + b.humidity, 0) / allEntries.length).toFixed(1),
@@ -109,18 +123,19 @@ connectDB()
 
             const aggregated = {
                 temperature: avg.temperature,
-                humidityPct: ((avg.humidity / 100) * 100).toFixed(1),  // ancora valido
+                humidityPct: ((avg.humidity / 100) * 100).toFixed(1),
                 lightPct: Math.min(100, ((avg.light / 500) * 100)).toFixed(1),
                 rainPct: Math.min(100, ((avg.rain / 200) * 100)).toFixed(1),
                 timestamp
             };
 
             try {
-                // 3. Salvataggio
                 await SensorData.insertMany(allEntries);
                 await AggregatedSensorData.create(aggregated);
 
-                // 4. Emissione completa
+                console.log("✅ aggregated:", aggregated);
+                console.log("✅ allEntries (con stationId):", allEntries);
+
                 io.emit('sensor-update', {
                     aggregated,
                     stations: allEntries
@@ -131,7 +146,6 @@ connectDB()
                 console.error('❌ Errore salvataggio:', e.message);
             }
         });
-
 
         server.listen(3001, "0.0.0.0", () =>
             console.log("🚀 Server avviato su http://0.0.0.0:3001")

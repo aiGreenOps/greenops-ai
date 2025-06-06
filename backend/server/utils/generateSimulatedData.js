@@ -5,12 +5,11 @@ function generateSimulatedData(baseData) {
         return Math.max(0, +(num + ((Math.random() * 2 - 1) * range)).toFixed(2));
     };
 
-    return Array.from({ length: 3 }, (_, i) => ({
-        stationId: `station-${i + 2}`,
-        temperature: vary(baseData.temperature, 0.1),  // prima 0.4
-        humidity: vary(baseData.humidity, 0.3),        // prima 1
-        light: vary(baseData.light, 2),                // prima 5
-        rain: vary(baseData.rain, 0.5),                // prima 2
+    return Array.from({ length: 3 }, () => ({
+        temperature: vary(baseData.temperature, 0.1),
+        humidity: vary(baseData.humidity, 0.3),
+        light: vary(baseData.light, 2),
+        rain: vary(baseData.rain, 0.5),
         timestamp: new Date()
     }));
 }
