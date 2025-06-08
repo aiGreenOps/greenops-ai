@@ -359,7 +359,7 @@ exports.logoutAdmin = (req, res) => {
 
 exports.me = (req, res) => {
     User.findById(req.user.userId)
-        .select('firstName lastName email role twoFactorEnabled profilePicture status')
+        .select('firstName lastName email phone role fiscalCode twoFactorEnabled profilePicture status')
         .then(user => {
             if (!user) return res.status(404).json({ message: 'Utente non trovato' });
             res.json({ user });

@@ -16,7 +16,7 @@ export default function TwoFactorSetup({ enabled, onToggle }: Props) {
 
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE!;
 
-    // Se la prop enabled cambia esternamente, resettiamo il passo
+    // Reset UI se 2FA è già abilitata
     useEffect(() => {
         if (enabled) {
             setStep('start');
@@ -27,7 +27,14 @@ export default function TwoFactorSetup({ enabled, onToggle }: Props) {
         }
     }, [enabled]);
 
-    // 1) Abilita 2FA: genera QR
+    // Se 2FA non è attiva, genera subito QR al montaggio
+    useEffect(() => {
+        if (!enabled && step === 'start') {
+            startSetup();
+        }
+    }, [enabled, step]);
+
+    // 1) Richiedi setup QR
     const startSetup = async () => {
         setError('');
         const res = await fetch(`${API_BASE}/api/2fa/setup`, {
@@ -44,7 +51,7 @@ export default function TwoFactorSetup({ enabled, onToggle }: Props) {
         }
     };
 
-    // 2) Verifica TOTP e attiva
+    // 2) Verifica token OTP
     const verify = async () => {
         setError('');
         const res = await fetch(`${API_BASE}/api/2fa/verify`, {
@@ -57,7 +64,7 @@ export default function TwoFactorSetup({ enabled, onToggle }: Props) {
         if (res.ok) {
             setRecovery(json.recoveryCodes);
             setStep('done');
-            onToggle(true);       // notifica il genitore
+            onToggle(true); // comunica al parent che 2FA è attiva
         } else {
             setError(json.error || 'Verifica fallita');
         }
@@ -71,7 +78,7 @@ export default function TwoFactorSetup({ enabled, onToggle }: Props) {
             credentials: 'include'
         });
         if (res.ok) {
-            onToggle(false);      // notifica il genitore
+            onToggle(false);
             // reset UI
             setStep('start');
             setQr(null);
@@ -84,6 +91,7 @@ export default function TwoFactorSetup({ enabled, onToggle }: Props) {
     };
 
     // Render dinamico
+
     if (enabled) {
         return (
             <div>
@@ -94,15 +102,12 @@ export default function TwoFactorSetup({ enabled, onToggle }: Props) {
         );
     }
 
-    if (step === 'start') {
-        return <button onClick={startSetup}>Abilita 2FA</button>;
-    }
-
     if (step === 'verify' && qr) {
         return (
             <div>
+                <p>Scansiona il QR code con la tua app di autenticazione:</p>
                 <img src={qr} alt="QR 2FA" style={{ width: 150, height: 150 }} />
-                <br></br>
+                <br />
                 <input
                     placeholder="Inserisci codice OTP"
                     value={token}
@@ -121,7 +126,7 @@ export default function TwoFactorSetup({ enabled, onToggle }: Props) {
                 <ul>
                     {recovery.map(c => <li key={c}>{c}</li>)}
                 </ul>
-                <p>2FA abilitata con successo.</p>
+                <p>✅ 2FA abilitata con successo.</p>
             </div>
         );
     }

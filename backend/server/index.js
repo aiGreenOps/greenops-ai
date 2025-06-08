@@ -17,6 +17,8 @@ const sensorRoutes = require('./routes/sensors.routes');
 const managerRoutes = require("./routes/manager.routes");
 const aiRoutes = require("./routes/ai.routes");
 const stationRoutes = require('./routes/station.routes');
+const userRoutes = require('./routes/user.routes');
+const sessionRoutes = require('./routes/session.routes');
 
 const { router: twoFaRouter, authenticateHandler } = require("./routes/2fa.routes");
 const { protect } = require("./middleware/auth.middleware");
@@ -54,6 +56,8 @@ app.use("/api/ai", aiRoutes);
 app.use('/api/stations', stationRoutes);
 app.post("/api/2fa/authenticate", authenticateHandler);
 app.use("/api/2fa", protect, twoFaRouter);
+app.use('/api/user', userRoutes);
+app.use('/api/session', sessionRoutes);
 
 connectDB()
     .then(async () => {

@@ -28,7 +28,7 @@ exports.protectAdmin = (req, res, next) => {
     }
     try {
         req.user = jwt.verify(token, jwtSecret);
-        console.log("IN");                    
+        console.log("IN");
         next();
     } catch {
         return res.status(401).json({ message: "Token admin non valido" });
@@ -54,11 +54,12 @@ exports.protect = (req, res, next) => {
 
     try {
         const payload = jwt.verify(token, jwtSecret);
-        // payload può avere .userId (login) o .id (twoFaToken), unifichiamolo:
         req.user = {
             id: payload.userId ?? payload.id,
-            role: payload.role
+            role: payload.role,
+            iat: payload.iat 
         };
+        
         return next();
     } catch (err) {
         return res.status(401).json({ error: 'Token non valido' });

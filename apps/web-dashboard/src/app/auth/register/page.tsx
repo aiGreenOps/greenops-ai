@@ -24,6 +24,7 @@ export default function RegisterPage() {
     password: "",
     confirmPassword: "",
   });
+
   const [isInvited, setIsInvited] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -149,7 +150,7 @@ export default function RegisterPage() {
 
           <div className={styles.inputGroup}>
             <div className={styles.labels}>
-              <label htmlFor="fiscalCode">Tax code</label>
+              <label htmlFor="fiscalCode">Fiscal code</label>
             </div>
             <input
               id="fiscalCode"

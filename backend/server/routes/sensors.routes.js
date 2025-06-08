@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const AggregatedSensorData = require('../models/aggregatedSensorData.model');
 const SensorData = require('../models/sensorData.model');
+const Sensor = require('../models/sensor.model');
 
 router.get('/latest', async (req, res) => {
     try {
@@ -49,5 +50,28 @@ router.get('/latest/:stationId', async (req, res) => {
     }
 });
 
+router.get('/all', async (req, res) => {
+    try {
+        const sensors = await Sensor.find().populate('station');
+        res.json(sensors);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Filtro opzionale per stazione e tipo
+router.get('/filter', async (req, res) => {
+    const { stationId, sensorType } = req.query;
+    const query = {};
+    if (stationId) query.station = stationId;
+    if (sensorType) query.sensorType = sensorType;
+
+    try {
+        const sensors = await Sensor.find(query).populate('station');
+        res.json(sensors);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 module.exports = router;
