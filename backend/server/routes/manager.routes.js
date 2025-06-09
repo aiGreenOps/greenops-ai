@@ -5,7 +5,8 @@ const {
     getPending,
     approve,
     reject,
-    invite
+    invite,
+    deleteAccount
 } = require("../controllers/manager.controller");
 const { protectManager } = require("../middleware/auth.middleware");
 
@@ -23,5 +24,8 @@ router.patch("/users/:id/reject", reject);
 
 // POST  /api/manager/users/invite
 router.post("/users/invite", invite);
+
+router.delete('/delete-account', protectManager, deleteAccount);
+
 
 module.exports = router;

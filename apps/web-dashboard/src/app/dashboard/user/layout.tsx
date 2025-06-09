@@ -5,7 +5,7 @@ import { FiMoon, FiSun, FiPower, FiGrid, FiMap, FiSettings, FiBarChart2, FiLogOu
 import { MdOutlineSensors } from 'react-icons/md';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import Image from 'next/image';
 import { SensorProvider } from '@/context/SensorContext';
@@ -14,7 +14,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
     const { user, loading } = useCurrentUser();
     const pathname = usePathname();
+    const router = useRouter();
 
+    const handleLogout = async () => {
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/api/auth/logout`, {
+                method: "POST",
+                credentials: "include",
+            });
+            if (res.ok) {
+                router.push("/auth/login");
+            } else {
+                console.error("Logout failed");
+            }
+        } catch (err) {
+            console.error("Errore durante il logout:", err);
+        }
+    };
 
     const links = [
         { href: '/dashboard/user', label: 'Dashboard', icon: <FiGrid /> },
@@ -84,7 +100,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 {user.firstName} {user.lastName}
                             </p>
                         )}
-                        <p className={styles.logoutSidebar}>
+                        <p className={styles.logoutSidebar} onClick={handleLogout} style={{ cursor: 'pointer' }}>
                             <FiLogOut /> <span>Logout</span>
                         </p>
                     </div>
@@ -101,9 +117,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             </button>
                         </div>
                         <div className={styles.modeToggleLogout}>
-                            <button className={styles.modeLogout}>
+                            <button className={styles.modeLogout} onClick={handleLogout}>
                                 <FiPower />
                             </button>
+
                         </div>
                         <div className={styles.profilePictureWrapper}>
                             {user?.profilePicture && (

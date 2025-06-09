@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import styles from "./settings.module.css";
 import { FiUser, FiSave } from "react-icons/fi";
 import { IoShieldOutline } from "react-icons/io5";
-import { RiTeamLine, RiDeleteBinLine } from "react-icons/ri";
+import { RiTeamLine, RiDeleteBinLine, RiUserAddLine } from "react-icons/ri";
 import Image from 'next/image';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { GoAlertFill, GoShieldCheck } from "react-icons/go";
@@ -20,6 +20,19 @@ export default function SettingsDashboardPage() {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [is2FAEnabled, setIs2FAEnabled] = useState(false);
     const [sessionInfo, setSessionInfo] = useState<{ ip: string, started: string } | null>(null);
+    const [showInvitePopup, setShowInvitePopup] = useState(false);
+    const [inviteEmail, setInviteEmail] = useState("");
+    const [allUsers, setAllUsers] = useState<{
+        _id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        role: string;
+        profilePicture?: string;
+        status?: string;
+        emailVerified?: boolean;
+    }[]>([]);
+
 
 
     const [formData, setFormData] = useState({
@@ -42,7 +55,7 @@ export default function SettingsDashboardPage() {
                 role: user.role || ""
             });
             setPreviewUrl(user.profilePicture || null);
-            setIs2FAEnabled(user.is2FAEnabled ?? false);
+            setIs2FAEnabled(user.twoFactorEnabled ?? false);
         }
     }, [user]);
 
@@ -55,16 +68,36 @@ export default function SettingsDashboardPage() {
     useEffect(() => {
         (async () => {
             try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/api/session/info`, {
-                    credentials: 'include',
-                });
-                const data = await res.json();
-                setSessionInfo({ ip: data.ip, started: data.started });
-            } catch {
-                setSessionInfo(null);
+                const [sessionRes, usersRes] = await Promise.all([
+                    fetch(`${process.env.NEXT_PUBLIC_API_BASE}/api/session/info`, {
+                        credentials: 'include',
+                    }),
+                    fetch(`${process.env.NEXT_PUBLIC_API_BASE}/api/user/all`, {
+                        credentials: 'include',
+                    })
+                ]);
+
+                if (sessionRes.ok) {
+                    const sessionData = await sessionRes.json();
+                    setSessionInfo({ ip: sessionData.ip, started: sessionData.started });
+                } else {
+                    setSessionInfo(null);
+                }
+
+                if (usersRes.ok) {
+                    const usersData = await usersRes.json();
+                    setAllUsers(usersData);
+                } else {
+                    const err = await usersRes.json();
+                    throw new Error(err.message || 'Errore');
+                }
+
+            } catch (err: any) {
+                console.error('Errore caricamento dati:', err.message);
             }
         })();
     }, []);
+
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -78,6 +111,21 @@ export default function SettingsDashboardPage() {
         const { name, value } = e.target;
         setFormData(f => ({ ...f, [name]: value }));
     };
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setShow2FAComponent(false);
+            }
+        };
+        if (show2FAComponent) {
+            window.addEventListener('keydown', handleKeyDown);
+        }
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [show2FAComponent]);
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -111,6 +159,101 @@ export default function SettingsDashboardPage() {
         }
     };
 
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setShowInvitePopup(false);
+            }
+        };
+        if (showInvitePopup) {
+            window.addEventListener('keydown', handleKeyDown);
+        }
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [showInvitePopup]);
+
+    const handleDeleteAccount = async () => {
+        if (!confirm("Sei sicuro di voler eliminare definitivamente il tuo account?")) return;
+
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/api/manager/delete-account`, {
+                method: "DELETE",
+                credentials: "include",
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || "Errore durante l'eliminazione");
+            }
+
+            toast.success("Account eliminato.");
+            window.location.href = "/auth/login";
+        } catch (err: any) {
+            toast.error(err.message);
+        }
+    };
+
+    const handleInviteSubmit = async () => {
+        if (!inviteEmail) return toast.error("Email richiesta.");
+
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/api/manager/users/invite`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ email: inviteEmail }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || "Errore invito.");
+
+            toast.success(data.message);
+            setInviteEmail("");
+            setShowInvitePopup(false);
+        } catch (err: any) {
+            toast.error(err.message || "Errore durante invito");
+        }
+    };
+
+    const handleApproval = async (userId: string, action: "approve" | "reject") => {
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/api/manager/users/${userId}/${action}`, {
+                method: "PATCH",
+                credentials: "include"
+            });
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.message || "Errore");
+
+            toast.success(data.message);
+
+            setAllUsers(prev =>
+                action === "approve"
+                    ? prev.map(u => u._id === userId ? { ...u, status: "active" } : u)
+                    : prev.filter(u => u._id !== userId) // rimuove se rifiutato
+            );
+        } catch (err: any) {
+            toast.error(err.message || "Errore durante l'approvazione/rifiuto");
+        }
+    };
+
+
+    const handleDisable2FA = async () => {
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/api/2fa/disable`, {
+                method: "POST",
+                credentials: "include"
+            });
+            if (!res.ok) throw new Error("Failed to disable 2FA");
+
+            setIs2FAEnabled(false);
+            toast.success("Two-Factor Authentication disabled.");
+        } catch (err: any) {
+            toast.error(err.message || "Error disabling 2FA");
+        }
+    };
+
     return (
         <div className={styles.wrapper}>
             <div className={styles.firstContainer}>
@@ -137,10 +280,11 @@ export default function SettingsDashboardPage() {
 
                     <div className={styles.divisor}></div>
 
-                    <div className={styles.deleteProfile}>
+                    <div className={styles.deleteProfile} onClick={handleDeleteAccount}>
                         <RiDeleteBinLine className={styles.iconBtn} />
                         <span className={styles.labelBtn}>Delete Account</span>
                     </div>
+
                 </div>
 
                 <div className={styles.optionProfile}>
@@ -298,9 +442,17 @@ export default function SettingsDashboardPage() {
                                             ? "Your account is protected with 2FA."
                                             : "We strongly recommend enabling 2FA to secure your account."}
                                     </p>
-                                    <button className={styles.btnAuth} onClick={() => setShow2FAComponent(true)}>
-                                        {is2FAEnabled ? "Manage 2FA" : "Enable 2FA"}
-                                    </button>
+
+                                    {is2FAEnabled ? (
+                                        <button className={styles.btnAuth} onClick={handleDisable2FA}>
+                                            Disable 2FA
+                                        </button>
+                                    ) : (
+                                        <button className={styles.btnAuth} onClick={() => setShow2FAComponent(true)}>
+                                            Enable 2FA
+                                        </button>
+                                    )}
+
 
                                 </div>
                                 {show2FAComponent && (
@@ -313,10 +465,10 @@ export default function SettingsDashboardPage() {
                                                     setShow2FAComponent(false);
                                                 }}
                                             />
-                                            <button className={styles.modalClose} onClick={() => setShow2FAComponent(false)}>✕</button>
                                         </div>
                                     </div>
                                 )}
+
                             </div>
 
                             <p className={styles.subtitleProfile}>Login Sessions</p>
@@ -337,6 +489,100 @@ export default function SettingsDashboardPage() {
                     {activeTab === 'Team Members' && (
                         <div className={styles.teamContainer}>
                             <div className={styles.titleMain}>Team Members</div>
+                            <div className={styles.headerTeam}>
+                                <div className={styles.textContainerTeam}>
+                                    <p className={styles.textTeam}>
+                                        Team Members ({allUsers.filter(u => u.emailVerified).length})
+                                    </p>
+                                    <p className={styles.subTextTeam}>People who have access to this green space management system</p>
+                                </div>
+                                <button className={styles.inviteMember} onClick={() => setShowInvitePopup(true)}>
+                                    <RiUserAddLine /> Invite Member
+                                </button>
+                            </div>
+                            <div className={styles.memberContainer}>
+                                {allUsers
+                                    .filter(user => user.emailVerified)
+                                    .sort((a, b) => {
+                                        // 1. Prima i maintainer in pending
+                                        if (a.role === 'maintainer' && a.status === 'pending' && !(b.role === 'maintainer' && b.status === 'pending')) {
+                                            return -1;
+                                        }
+                                        if (b.role === 'maintainer' && b.status === 'pending' && !(a.role === 'maintainer' && a.status === 'pending')) {
+                                            return 1;
+                                        }
+
+                                        // 2. Ordina per ruolo
+                                        const rolePriority: Record<string, number> = {
+                                            admin: 0,
+                                            manager: 1,
+                                            maintainer: 2,
+                                            employee: 3
+                                        };
+
+                                        return rolePriority[a.role] - rolePriority[b.role];
+                                    })
+
+                                    .map((user, idx) => (
+                                        <div key={idx} className={styles.cardMember}>
+                                            <img
+                                                src={user.profilePicture || "http://localhost:3001/uploads/default-user.jpg"}
+                                                alt={`${user.firstName} ${user.lastName}`}
+                                                className={styles.imgMember}
+                                            />
+                                            <div className={styles.infoMember}>
+                                                <p className={styles.nameMember}>{user.firstName} {user.lastName}</p>
+                                                <p className={styles.mailMember}>{user.email}</p>
+                                            </div>
+
+                                            {user.role === 'maintainer' && user.status === 'pending' && (
+                                                <div className={styles.btnApprovalWrapper}>
+                                                    <button
+                                                        className={styles.btnApprove}
+                                                        onClick={() => handleApproval(user._id, "approve")}
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                    <button
+                                                        className={styles.btnReject}
+                                                        onClick={() => handleApproval(user._id, "reject")}
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            <div
+                                                className={`${styles.toggleMember} ${user.role === 'manager'
+                                                    ? styles.manager
+                                                    : user.role === 'maintainer'
+                                                        ? styles.maintainer
+                                                        : user.role === 'admin'
+                                                            ? styles.admin
+                                                            : styles.employee
+                                                    }`}
+                                            >
+                                                {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                                            </div>
+                                        </div>
+                                    ))}
+
+                            </div>
+                            {showInvitePopup && (
+                                <div className={styles.modalOverlay}>
+                                    <div className={styles.modalContent}>
+                                        <p className={styles.titlePop}>Invite a Maintainer</p>
+                                        <input
+                                            type="email"
+                                            placeholder="Enter email address"
+                                            value={inviteEmail}
+                                            onChange={e => setInviteEmail(e.target.value)}
+                                            className={styles.inputInvite}
+                                        />
+                                        <button className={styles.btnInvite} onClick={handleInviteSubmit}>Send Invite</button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

@@ -9,6 +9,7 @@ import { LuThermometerSun, LuDroplets, LuLeaf } from "react-icons/lu";
 import { FaRegLightbulb } from "react-icons/fa";
 import { FiBattery, FiEdit } from "react-icons/fi";
 import { RxDotsHorizontal } from "react-icons/rx";
+import { useSensorData } from '@/context/SensorContext';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE;
 
@@ -21,7 +22,7 @@ const unitMap: Record<string, string> = {
     temperature: '°C',
     humidity: '%',
     rain: '%',
-    light: '%',
+    light: 'lux',
     default: ''
 };
 
@@ -48,6 +49,12 @@ export default function SensorsDashboardPage() {
     const [statusFilter, setStatusFilter] = useState('all');
     const [typeFilter, setTypeFilter] = useState('all');
     const [loading, setLoading] = useState(true);
+
+    const sensorContext = useSensorData();
+    if (!sensorContext) return null;
+    const { current } = sensorContext;
+
+    console.log(current);
 
     useEffect(() => {
         async function fetchSensors() {
@@ -78,6 +85,18 @@ export default function SensorsDashboardPage() {
         return '#27ae60';                          // verde pieno
     }
 
+    function getDynamicValue(sensor: Sensor): number | null {
+        const stationData = current?.stations.find(s => s.stationId === sensor.station._id);
+        if (!stationData) return null;
+
+        return {
+            temperature: stationData.temperature,
+            humidity: stationData.humidity,
+            rain: stationData.rain,
+            light: stationData.light
+        }[sensor.sensorType] ?? null;
+    }
+
     return (
         <div className={styles.wrapper}>
             <div className={styles.firstContainer}>
@@ -85,14 +104,12 @@ export default function SensorsDashboardPage() {
                     <p className={styles.title}>Sensors</p>
                     <p className={styles.subTitle}>Monitor and manage all connected sensors</p>
                 </div>
-                <div className={styles.buttonContainer}>
-                </div>
+                <div className={styles.buttonContainer}></div>
             </div>
 
             <div className={styles.secondContainer}>
                 <div className={styles.filterWrapper}>
 
-                    {/* Search bar con icona */}
                     <div className={styles.searchInputWrapper}>
                         <IoSearchOutline className={styles.inputIcon} />
                         <input
@@ -101,10 +118,9 @@ export default function SensorsDashboardPage() {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className={styles.searchInput}
-                        ></input>
+                        />
                     </div>
 
-                    {/* Select Status */}
                     <div className={styles.selectWrapper}>
                         <BsList className={styles.inputIcon} />
                         <select
@@ -120,7 +136,6 @@ export default function SensorsDashboardPage() {
                         </select>
                     </div>
 
-                    {/* Select Type */}
                     <div className={styles.selectWrapper}>
                         <PiSlidersHorizontal className={styles.inputIcon} />
                         <select
@@ -143,42 +158,50 @@ export default function SensorsDashboardPage() {
                     <p className={styles.loading}>Loading sensors...</p>
                 ) : (
                     <div className={styles.sensorGrid}>
-                        {filteredSensors.map(sensor => (
-                            <div key={sensor._id} className={styles.sensorCard}>
+                        {filteredSensors.map(sensor => {
+                            const dynamicValue = getDynamicValue(sensor);
 
-                                <div className={styles.headerContainer}>
-                                    {React.cloneElement(sensorIcons[sensor.sensorType], {
-                                        className: `${styles.sensorIcon} ${styles[sensor.sensorType]}`
-                                    })}
-                                    <div className={styles.infoSensor}>
-                                        <p className={styles.nameSensor}>{sensor.name}</p>
-                                        <p className={styles.modelSensor}>{sensor.model}</p>
+                            return (
+                                <div key={sensor._id} className={styles.sensorCard}>
+                                    <div className={styles.headerContainer}>
+                                        {React.cloneElement(sensorIcons[sensor.sensorType], {
+                                            className: `${styles.sensorIcon} ${styles[sensor.sensorType]}`
+                                        })}
+                                        <div className={styles.infoSensor}>
+                                            <p className={styles.nameSensor}>{sensor.name}</p>
+                                            <p className={styles.modelSensor}>{sensor.model}</p>
+                                        </div>
+                                        <div className={`${styles.statusContainer} ${styles[sensor.status]}`}>
+                                            <div className={styles.ballStatus}></div>
+                                            <p className={styles.status}>{sensor.status}</p>
+                                        </div>
                                     </div>
-                                    <div className={`${styles.statusContainer} ${styles[sensor.status]}`}>
-                                        <div className={styles.ballStatus}></div>
-                                        <p className={styles.status}>{sensor.status}</p>
+
+                                    <div className={styles.bodySensorContainer}>
+                                        <div className={styles.valueContainer}>
+                                            <p className={styles.value}>
+                                                {dynamicValue !== null ? dynamicValue.toFixed(1) : '—'}
+                                            </p>
+                                            <p className={styles.format}>
+                                                {unitMap[sensor.sensorType] || unitMap.default}
+                                            </p>
+                                        </div>
+                                        <p className={styles.locationSensor}>{sensor.station?.name}</p>
+                                    </div>
+
+                                    <div className={styles.optionSensorContainer}>
+                                        <div className={styles.batteryContainer} style={{ color: getBatteryColor(sensor.battery) }}>
+                                            <FiBattery />
+                                            <p className={styles.valueBattery}>{sensor.battery}%</p>
+                                        </div>
+                                        <div className={styles.optionContainer}>
+                                            <FiEdit className={styles.buttonOption} />
+                                            <RxDotsHorizontal className={styles.buttonOption} />
+                                        </div>
                                     </div>
                                 </div>
-                                <div className={styles.bodySensorContainer}>
-                                    <div className={styles.valueContainer}>
-                                        <p className={styles.value}>24.5</p>
-                                        <p className={styles.format}>
-                                            {unitMap[sensor.sensorType] || unitMap.default}
-                                        </p>                                    </div>
-                                    <p className={styles.locationSensor}>{sensor.station?.name}</p>
-                                </div>
-                                <div className={styles.optionSensorContainer}>
-                                    <div className={styles.batteryContainer} style={{ color: getBatteryColor(sensor.battery) }}>
-                                        <FiBattery />
-                                        <p className={styles.valueBattery}>{sensor.battery}%</p>
-                                    </div>
-                                    <div className={styles.optionContainer}>
-                                        <FiEdit className={styles.buttonOption} />
-                                        <RxDotsHorizontal className={styles.buttonOption} />
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>

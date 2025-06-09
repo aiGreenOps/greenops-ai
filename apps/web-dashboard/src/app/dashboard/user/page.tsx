@@ -12,8 +12,8 @@ import AggregatedChart from '@/components/AggregatedChart';
 
 export default function UserDashboardPage() {
     const sensor = useSensorData();
-    const agg = sensor?.current?.aggregated;  // ✅ dati attuali
-    const template = generateDayTemplate(); // 288 slot da mezzanotte a 23:55
+    const agg = sensor?.current?.aggregated;  
+    const template = generateDayTemplate(); 
     const merged = mergeWithTemplate(template, sensor?.today || []);
 
     const [visibleLines, setVisibleLines] = useState({
@@ -29,7 +29,7 @@ export default function UserDashboardPage() {
 
     const formattedData = merged.map(d => ({
         ...d,
-        time: new Date(d.timestamp).getTime() // aggiunge il campo usato su XAxis
+        time: new Date(d.timestamp).getTime() 
     }));
 
     const previous = useRef<typeof agg | null>(null);
@@ -165,7 +165,7 @@ export default function UserDashboardPage() {
                     <div className={styles.parameterInfo}>
                         <p className={styles.parameterName}>Solar Brightness</p>
                         <div className={styles.parameterValue}>
-                            <p className={styles.value}>{agg?.lightPct} %</p>
+                            <p className={styles.value}>{agg?.lightPct} lux</p>
                             <Estimator value={delta.light} />
                         </div>
                     </div>

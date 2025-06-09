@@ -128,7 +128,7 @@ connectDB()
             const aggregated = {
                 temperature: avg.temperature,
                 humidityPct: ((avg.humidity / 100) * 100).toFixed(1),
-                lightPct: Math.min(100, ((avg.light / 500) * 100)).toFixed(1),
+                lightPct: avg.light.toFixed(1),
                 rainPct: Math.min(100, ((avg.rain / 200) * 100)).toFixed(1),
                 timestamp
             };

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import styles from '../app/dashboard/user/settings/settings.module.css'
 
 interface Props {
     enabled: boolean;
@@ -104,16 +105,18 @@ export default function TwoFactorSetup({ enabled, onToggle }: Props) {
 
     if (step === 'verify' && qr) {
         return (
-            <div>
-                <p>Scansiona il QR code con la tua app di autenticazione:</p>
-                <img src={qr} alt="QR 2FA" style={{ width: 150, height: 150 }} />
+            <div className={styles.popContainer}>
+                <p className={styles.textPop}>Scan QR Code</p>
+                <img className={styles.popImage} src={qr} alt="QR 2FA" />
                 <br />
-                <input
-                    placeholder="Inserisci codice OTP"
-                    value={token}
-                    onChange={e => setToken(e.target.value)}
-                />
-                <button onClick={verify}>Verifica e Abilita</button>
+                <div className={styles.inputGroup}>
+                    <input
+                        placeholder="Inserisci codice OTP"
+                        value={token}
+                        onChange={e => setToken(e.target.value)}
+                    />
+                </div>
+                <button className={`${styles.submitButton} ${styles.btnPop}`} onClick={verify}>Verifica e Abilita</button>
                 {error && <p style={{ color: 'red' }}>{error}</p>}
             </div>
         );

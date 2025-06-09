@@ -36,3 +36,12 @@ exports.updateProfile = async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 };
+
+exports.getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find({}, 'firstName lastName email status emailVerified role profilePicture'); 
+        res.status(200).json(users);
+    } catch (err) {
+        res.status(500).json({ message: 'Errore interno nel recupero utenti' });
+    }
+};

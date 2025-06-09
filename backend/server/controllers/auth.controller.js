@@ -117,6 +117,7 @@ exports.register = async (req, res) => {
         emailVerified,
         status,
         authProvider: "local",
+        profilePicture: "http://localhost:3001/uploads/default-user.jpg",
         ...(!isMobile && { fiscalCode }),
     });
 

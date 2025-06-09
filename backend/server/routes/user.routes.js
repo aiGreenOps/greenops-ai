@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { updateProfile } = require('../controllers/user.controller');
 const { protect } = require('../middleware/auth.middleware');
+const { getAllUsers } = require('../controllers/user.controller');
 
 const multer = require("multer");
 const path = require("path");
@@ -22,8 +23,10 @@ const upload = multer({ storage });
 router.put(
     "/update-profile",
     protect,
-    upload.single("profilePicture"),  // ← questo deve essere una funzione!
+    upload.single("profilePicture"), 
     updateProfile
 );
+
+router.get('/all', protect, getAllUsers); // solo admin
 
 module.exports = router;

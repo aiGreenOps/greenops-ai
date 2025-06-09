@@ -161,7 +161,7 @@ export default function MapViewDashboardPage() {
                                             <p className={styles.nameValue}>Humidity</p>
                                         </div>
                                         <p key={`hum-${animateKey}`} className={`${styles.dataValue} ${styles.animatedValue}`}>
-                                            {selectedStation.humidity}%
+                                            {selectedStation.humidity} %
                                         </p>
                                     </div>
                                     <div className={styles.value}>
@@ -170,7 +170,7 @@ export default function MapViewDashboardPage() {
                                             <p className={styles.nameValue}>Soil Moisture</p>
                                         </div>
                                         <p key={`rain-${animateKey}`} className={`${styles.dataValue} ${styles.animatedValue}`}>
-                                            {selectedStation.rain}%
+                                            {selectedStation.rain} %
                                         </p>
                                     </div>
                                     <div className={styles.value}>
@@ -179,7 +179,7 @@ export default function MapViewDashboardPage() {
                                             <p className={styles.nameValue}>Brightness</p>
                                         </div>
                                         <p key={`light-${animateKey}`} className={`${styles.dataValue} ${styles.animatedValue}`}>
-                                            {selectedStation.light}%
+                                            {selectedStation.light} lux
                                         </p>
                                     </div>
                                 </div>
