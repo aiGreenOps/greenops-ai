@@ -4,6 +4,7 @@ const router = express.Router();
 const { requireRole, protectAdmin } = require("../middleware/auth.middleware");
 const adminCtrl = require("../controllers/admin.controller");
 const { logoutAdmin }  = require("../controllers/auth.controller");
+const { getAdminProfile } = require("../controllers/admin.controller");
 
 router.post("/logout", protectAdmin, logoutAdmin);
 
@@ -12,5 +13,6 @@ router.get("/users/pending", protectAdmin, requireRole("admin"), adminCtrl.getPe
 router.patch("/users/:id/approve", protectAdmin, requireRole("admin"), adminCtrl.approve);
 router.patch("/users/:id/reject", protectAdmin, requireRole("admin"), adminCtrl.reject);
 router.post("/users/invite", protectAdmin, requireRole("admin"), adminCtrl.invite);
+router.get("/me", getAdminProfile);
 
 module.exports = router;

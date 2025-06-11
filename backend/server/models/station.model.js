@@ -16,6 +16,23 @@ const stationSchema = new mongoose.Schema({
         enum: ['healthy', 'warning', 'critical'],
         default: 'healthy',
     },
+    plantType: {
+        type: String,
+        enum: ['ulivi', 'siepe', 'prato', 'aiuole'],
+        required: true,
+    },
+    lastIrrigation: {
+        type: Date,
+        default: null,
+    },
+    lastPruning: {
+        type: Date,
+        default: null,
+    },
+    lastFertilization: {
+        type: Date,
+        default: null,
+    },
     updatedAt: {
         type: Date,
         default: Date.now,

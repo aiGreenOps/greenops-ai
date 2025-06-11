@@ -32,6 +32,7 @@ async function seedAdmin() {
         role: "admin",
         emailVerified: true,
         status: "active",
+        profilePicture: "http://localhost:3001/uploads/default-user.jpg"
     });
 
     console.log(`[seedAdmin] Admin creato: ${email}`);

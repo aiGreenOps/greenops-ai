@@ -12,8 +12,8 @@ import AggregatedChart from '@/components/AggregatedChart';
 
 export default function UserDashboardPage() {
     const sensor = useSensorData();
-    const agg = sensor?.current?.aggregated;  
-    const template = generateDayTemplate(); 
+    const agg = sensor?.current?.aggregated;
+    const template = generateDayTemplate();
     const merged = mergeWithTemplate(template, sensor?.today || []);
 
     const [visibleLines, setVisibleLines] = useState({
@@ -29,7 +29,7 @@ export default function UserDashboardPage() {
 
     const formattedData = merged.map(d => ({
         ...d,
-        time: new Date(d.timestamp).getTime() 
+        time: new Date(d.timestamp).getTime()
     }));
 
     const previous = useRef<typeof agg | null>(null);
@@ -73,9 +73,13 @@ export default function UserDashboardPage() {
 
     const [aiMessage, setAiMessage] = useState("");
     const [loading, setLoading] = useState(true);
+    const hasStarted = useRef(false); // flag che vive tra i render
 
     useEffect(() => {
         async function fetchStreamingReport() {
+            if (hasStarted.current) return; // blocca se già partito
+            hasStarted.current = true;
+
             try {
                 const res = await fetch("http://localhost:3001/api/ai/response", {
                     method: "POST",
@@ -101,12 +105,12 @@ export default function UserDashboardPage() {
 
                     let chunk = decoder.decode(value, { stream: true });
                     if (firstChunk) {
-                        chunk = chunk.replace(/^\s+/, ""); // rimuove spazi iniziali
-                        setLoading(false); // 🔥 rimuove skeleton
+                        chunk = chunk.replace(/^\s+/, "");
+                        setLoading(false);
                         firstChunk = false;
                     }
                     fullText += chunk;
-                    setAiMessage(fullText); // aggiorna live!
+                    setAiMessage(fullText);
                 }
 
             } catch (err) {

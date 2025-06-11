@@ -2,6 +2,7 @@
 
 import styles from './layout.module.css';
 import { FiMoon, FiSun, FiPower, FiGrid, FiMap, FiSettings, FiBarChart2, FiLogOut } from "react-icons/fi";
+import { CiCalendar } from "react-icons/ci";
 import { MdOutlineSensors } from 'react-icons/md';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
@@ -36,6 +37,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { href: '/dashboard/user', label: 'Dashboard', icon: <FiGrid /> },
         { href: '/dashboard/user/map', label: 'Map View', icon: <FiMap /> },
         { href: '/dashboard/user/sensors', label: 'Sensors', icon: <MdOutlineSensors /> },
+        { href: '/dashboard/user/activities', label: 'Activities', icon: <CiCalendar /> },
         { href: '/dashboard/user/reports', label: 'Reports', icon: <FiBarChart2 /> },
         { href: '/dashboard/user/settings', label: 'Settings', icon: <FiSettings /> },
     ];

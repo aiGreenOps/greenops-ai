@@ -82,6 +82,7 @@ export default function MapLibreComponent({
 
         markersRef.current.push(marker);
       });
+      console.log("Rendering markers for stations:", stations);
   }, [activeFilter, stations]);
 
   return <div ref={mapContainer} className={styles.map} />;

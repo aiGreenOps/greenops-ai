@@ -5,18 +5,33 @@ export function useCurrentUser() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/me`, {
-            credentials: 'include',
-        })
-            .then(res => {
-                if (!res.ok) throw new Error('Non autenticato');
-                return res.json();
-            })
-            .then(({ user }) => {
-                setUser(user);
-            })
-            .catch(() => setUser(null))
-            .finally(() => setLoading(false));
+        const fetchUser = async () => {
+            try {
+                // 1. Prova prima /admin/me
+                let res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/api/admin/me`, {
+                    credentials: 'include',
+                });
+
+                if (!res.ok) {
+                    // 2. Fallback su /me
+                    res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/me`, {
+                        credentials: 'include',
+                    });
+                }
+
+                if (!res.ok) throw new Error("Non autenticato");
+
+                const data = await res.json();
+                // Se il backend admin restituisce direttamente l'oggetto user:
+                setUser(data.user || data);
+            } catch (err) {
+                setUser(null);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchUser();
     }, []);
 
     return { user, loading };

@@ -28,7 +28,6 @@ exports.protectAdmin = (req, res, next) => {
     }
     try {
         req.user = jwt.verify(token, jwtSecret);
-        console.log("IN");
         next();
     } catch {
         return res.status(401).json({ message: "Token admin non valido" });

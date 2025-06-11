@@ -180,3 +180,22 @@ exports.invite = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.getAdminProfile = async (req, res) => {
+  try {
+    const token = req.cookies.adminToken; // o Authorization se decidi
+    if (!token) return res.status(401).json({ error: "Token mancante" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId || decoded.id;
+
+    const admin = await User.findById(userId).select("firstName lastName email phone role fiscalCode profilePicture status");
+
+    if (!admin) return res.status(404).json({ error: "Admin non trovato" });
+
+    res.json(admin);
+  } catch (err) {
+    console.error("Errore getAdminProfile:", err);
+    res.status(500).json({ error: "Errore server o token non valido" });
+  }
+};

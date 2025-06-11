@@ -30,7 +30,14 @@ body {
     --text-notify: rgb(153, 27, 27);
     --button-primary: rgb(45, 106, 79);
     --button-primary-hover: rgb(8, 92, 68);
-
+    --toggle-grey: rgb(243, 244, 246);
+    --text-toggle-grey: rgb(31, 41, 55);
+    --toggle-green: rgba(220, 252, 231, 255);
+    --text-toggle-green: rgb(22, 101, 52);
+    --toggle-red: rgba(254, 226, 226, 255);
+    --text-toggle-red: rgb(153, 27, 2);
+    --toggle-blue: rgba(219, 234, 254, 255);
+    --text-toggle-blue: rgb(30, 64, 175)
 }
 
 
@@ -51,4 +58,12 @@ body {
     --text-notify: rgb(254, 226, 226);
     --button-primary: rgb(8, 92, 68);
     --button-primary-hover: rgb(45, 106, 79);
+    --toggle-grey: rgb(55, 65, 81);
+    --text-toggle-grey: rgb(209, 213, 219);
+    --toggle-green: rgba(44, 70, 71, 255);
+    --text-toggle-green: rgb(134, 239, 172);
+    --toggle-red: rgba(60, 38, 47, 255);
+    --text-toggle-red: rgb(252, 165, 165);
+    --toggle-blue: rgba(31, 47, 80, 255);
+    --text-toggle-blue: rgb(147, 197, 253);
 }

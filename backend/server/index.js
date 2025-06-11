@@ -19,6 +19,7 @@ const aiRoutes = require("./routes/ai.routes");
 const stationRoutes = require('./routes/station.routes');
 const userRoutes = require('./routes/user.routes');
 const sessionRoutes = require('./routes/session.routes');
+const activityRoutes = require('./routes/activity.routes');
 
 const { router: twoFaRouter, authenticateHandler } = require("./routes/2fa.routes");
 const { protect } = require("./middleware/auth.middleware");
@@ -58,6 +59,7 @@ app.post("/api/2fa/authenticate", authenticateHandler);
 app.use("/api/2fa", protect, twoFaRouter);
 app.use('/api/user', userRoutes);
 app.use('/api/session', sessionRoutes);
+app.use('/api/activities', activityRoutes);
 
 connectDB()
     .then(async () => {
@@ -78,7 +80,6 @@ connectDB()
 
         if (Object.values(stationMap).some(v => !v)) {
             console.error("❌ Nomi stazioni nel DB non corrispondono a North/East/South/West");
-            console.log("🧭 stationMap:", stationMap);
             process.exit(1);
         }
 
@@ -117,6 +118,8 @@ connectDB()
             ];
 
             const allEntries = [realEntry, ...simulatedEntries];
+            
+            console.log(allEntries);
 
             const avg = {
                 temperature: +(allEntries.reduce((a, b) => a + b.temperature, 0) / allEntries.length).toFixed(1),
@@ -136,9 +139,6 @@ connectDB()
             try {
                 await SensorData.insertMany(allEntries);
                 await AggregatedSensorData.create(aggregated);
-
-                console.log("✅ aggregated:", aggregated);
-                console.log("✅ allEntries (con stationId):", allEntries);
 
                 io.emit('sensor-update', {
                     aggregated,

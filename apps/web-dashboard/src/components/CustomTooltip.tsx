@@ -48,8 +48,9 @@ export default function CustomTooltip({ active, payload, label, visibleLines }: 
                 const baseColor = tooltipColors[name] || '#999';
                 const alpha = visibleLines?.[dataKey] ? 1 : 0.3;
                 const color = baseColor.replace('rgb', 'rgba').replace(')', `, ${alpha})`);
-                const unit = name.includes('Temp') ? '°C' : '%';
-
+                let unit = '%';
+                if (name === 'Temperature') unit = '°C';
+                else if (name === 'Brightness') unit = 'lux';
                 return (
                     <p key={index} className={styles.entryTool} style={{ color }}>
                         {name}: {value} {unit}
