@@ -119,8 +119,6 @@ connectDB()
 
             const allEntries = [realEntry, ...simulatedEntries];
             
-            console.log(allEntries);
-
             const avg = {
                 temperature: +(allEntries.reduce((a, b) => a + b.temperature, 0) / allEntries.length).toFixed(1),
                 humidity: +(allEntries.reduce((a, b) => a + b.humidity, 0) / allEntries.length).toFixed(1),

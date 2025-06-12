@@ -13,6 +13,7 @@ interface Station {
     lon: number;
   };
   status: 'healthy' | 'warning' | 'critical';
+  plantType: string;
   updatedAt: string;
 }
 

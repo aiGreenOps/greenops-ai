@@ -6,8 +6,26 @@ import { LuThermometerSun, LuDroplets, LuLeaf } from "react-icons/lu";
 import { FaRegLightbulb } from "react-icons/fa";
 import { useSensorData } from '@/context/SensorContext';
 import { useState, useEffect } from 'react';
+import { RiFlowerLine } from "react-icons/ri";
+import { GrStatusInfo } from 'react-icons/gr';
+import { GiFertilizerBag } from "react-icons/gi";
+import { RiScissors2Line } from "react-icons/ri";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { PiSprayBottle } from 'react-icons/pi';
 
 const MapComponent = dynamic(() => import('@/components/MapLibreComponent'), { ssr: false });
+
+interface Activity {
+    _id: string;
+    title: string;
+    description: string;
+    type: 'maintenance' | 'pruning' | 'fertilizing' | 'repair';
+    priority: 'low' | 'medium' | 'high' | 'urgent';
+    location: string;
+    scheduledAt: string;
+    status: 'scheduled' | 'completed' | 'inProgress';
+}
 
 interface Station {
     _id: string;
@@ -15,6 +33,9 @@ interface Station {
     coordinates: { lat: number; lon: number };
     status: 'healthy' | 'warning' | 'critical';
     updatedAt: string;
+    plantType: string;
+    lastPruning?: string;
+    lastFertilization?: string;
 }
 
 interface StationWithData extends Station {
@@ -35,10 +56,187 @@ export default function MapViewDashboardPage() {
     const [stations, setStations] = useState<Station[]>([]);
     const [selectedStation, setSelectedStation] = useState<StationWithData | null>(null);
     const [animateKey, setAnimateKey] = useState(0);
+    const [showActivityPopup, setShowActivityPopup] = useState(false);
+    const [location, setLocation] = useState("all");
+    const [locationLocked, setLocationLocked] = useState(false);
+    const [activities, setActivities] = useState<Activity[]>([]);
+    const [showAIReportPopup, setShowAIReportPopup] = useState(false);
+    const [aiChunks, setAiChunks] = useState("");
+    const [hiddenChunks, setHiddenChunks] = useState("");
+    const [foundTags, setFoundTags] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    const [suggestedTitle, setSuggestedTitle] = useState("");
+    const [suggestedDescription, setSuggestedDescription] = useState("");
+    const [suggestedType, setSuggestedType] = useState("");
+
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
+    const [activityType, setActivityType] = useState("all");
+    const [priority, setPriority] = useState("all");
+    const [scheduledDate, setScheduledDate] = useState("");
+    const [scheduledTime, setScheduledTime] = useState("");
+
+
 
     const sensorContext = useSensorData();
     if (!sensorContext) return null;
     const { current } = sensorContext;
+
+    const handleScheduleTask = (preselectedLocation: string) => {
+        setLocation(preselectedLocation);
+        setLocationLocked(true);
+        setShowActivityPopup(true);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        const activityData = {
+            title,
+            description,
+            type: activityType,
+            priority,
+            location,
+            scheduledAt: `${scheduledDate}T${scheduledTime}:00`,
+        };
+
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/api/activities`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(activityData),
+            });
+
+            if (!res.ok) throw new Error('Creation failed');
+            const newActivity = await res.json(); // ottieni l'attività appena creata
+
+            setActivities((prev) => [newActivity, ...prev]);
+            setShowActivityPopup(false);
+            toast.success("Activity successfully created!");
+
+            // reset optional
+            setTitle('');
+            setDescription('');
+            setActivityType('');
+            setPriority('');
+            setLocation('');
+            setScheduledDate('');
+            setScheduledTime('');
+
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to create activity.");
+        }
+    };
+
+    const handleAskGreenOpsAI = async () => {
+        if (!selectedStation) return;
+
+        setAiChunks("");
+        setHiddenChunks("");
+        setSuggestedTitle("");
+        setSuggestedDescription("");
+        setSuggestedType("");
+        setFoundTags(false);
+        setLoading(true);
+        setShowAIReportPopup(true);
+
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/api/ai/greenops-analysis`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(selectedStation)
+        });
+
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder();
+        let fullText = "";
+
+        if (!reader) return;
+
+        let foundTags = false;
+        let firstChunkReceived = false;
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            fullText += chunk;
+
+            if (!firstChunkReceived) {
+                setLoading(false);
+                firstChunkReceived = true;
+            }
+
+            if (!foundTags) {
+                const tagIndex = chunk.indexOf("<");
+
+                if (tagIndex === -1) {
+                    // Nessun tag: mostra tutto il chunk
+                    setAiChunks(prev => prev + chunk);
+                } else {
+                    // Tag trovato a metà chunk
+                    const visible = chunk.slice(0, tagIndex);
+                    const hidden = chunk.slice(tagIndex);
+
+                    setAiChunks(prev => prev + visible);       // Mostra solo prima del tag
+                    setHiddenChunks(prev => prev + hidden);    // Nasconde il resto
+                    foundTags = true;                          // ❗ Blocca da qui in poi
+                }
+            } else {
+                // Dopo aver trovato un tag → tutto va nei chunk nascosti
+                setHiddenChunks(prev => prev + chunk);
+            }
+        }
+
+        const titleMatch = fullText.match(/<title>(.*?)<\/title>/i);
+        const descMatch = fullText.match(/<description>(.*?)<\/description>/i);
+        const typeMatch = fullText.match(/<type>(.*?)<\/type>/i);
+
+        if (titleMatch) setSuggestedTitle(titleMatch[1].trim());
+        if (descMatch) setSuggestedDescription(descMatch[1].trim());
+
+        if (typeMatch) {
+            const type = typeMatch[1].trim().toLowerCase();
+            const validTypes = ["maintenance", "pruning", "fertilizing", "repair"];
+            if (validTypes.includes(type)) {
+                setSuggestedType(type);
+            } else {
+                console.warn("❌ Tipo non valido ricevuto:", type);
+                setSuggestedType("");
+            }
+        }
+
+    };
+
+
+
+    const closeActivityPopup = () => {
+        setShowActivityPopup(false);
+        setLocationLocked(false);
+        setTitle("");
+        setDescription("");
+        setScheduledDate("");
+        setScheduledTime("");
+        setActivityType("all");
+        setPriority("all");
+        setLocation("all");
+    };
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                if (showActivityPopup) closeActivityPopup();
+                if (showAIReportPopup) setShowAIReportPopup(false);
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [showActivityPopup, showAIReportPopup]);
+
+
 
     // Animazione al cambio dati
     useEffect(() => {
@@ -52,6 +250,7 @@ export default function MapViewDashboardPage() {
             try {
                 const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/api/stations`);
                 const data = await res.json();
+                console.log(data);
                 setStations(data);
             } catch (err) {
                 console.error("Errore nel recupero stazioni:", err);
@@ -60,6 +259,7 @@ export default function MapViewDashboardPage() {
 
         fetchStations();
     }, []);
+
 
     // Aggiorna dati stazione selezionata quando arriva un nuovo update
     useEffect(() => {
@@ -114,7 +314,7 @@ export default function MapViewDashboardPage() {
                     <MapComponent
                         activeFilter={activeFilter}
                         stations={stations}
-                        onStationClick={(station) => {
+                        onStationClick={(station: Station) => {
                             const match = current?.stations?.find(
                                 s => String(s.stationId) === String(station._id)
                             );
@@ -134,6 +334,7 @@ export default function MapViewDashboardPage() {
                             });
                         }}
                     />
+
                 </div>
 
                 <div className={styles.detailsContainer}>
@@ -143,7 +344,7 @@ export default function MapViewDashboardPage() {
                             <div className={styles.detailsBox}>
                                 <div className={styles.statusContainer}>
                                     <span className={`${styles.ballStatus} ${styles[selectedStation.status]}`} />
-                                    <p className={styles.stationName}>{selectedStation.name}</p>
+                                    <p className={styles.stationName}>{selectedStation.name} Garden</p>
                                 </div>
                                 <div className={styles.valuesContainer}>
                                     <div className={styles.value}>
@@ -182,12 +383,239 @@ export default function MapViewDashboardPage() {
                                             {selectedStation.light} lux
                                         </p>
                                     </div>
+                                    <div className={styles.value}>
+                                        <div className={styles.headerValue}>
+                                            <RiFlowerLine />
+                                            <p className={styles.nameValue}>Plant Type</p>
+                                        </div>
+                                        <p key={`light-${animateKey}`} className={`${styles.dataValue} ${styles.animatedValue}`}>
+                                            {selectedStation.plantType.charAt(0).toUpperCase() + selectedStation.plantType.slice(1)}
+                                        </p>
+                                    </div>
+                                    <div className={styles.value}>
+                                        <div className={styles.headerValue}>
+                                            <GrStatusInfo />
+                                            <p className={styles.nameValue}>Status</p>
+                                        </div>
+                                        <p key={`light-${animateKey}`} className={`${styles.dataValue} ${styles.animatedValue}`}>
+                                            {selectedStation.status.charAt(0).toUpperCase() + selectedStation.status.slice(1)}
+                                        </p>
+                                    </div>
+                                    <div className={styles.value}>
+                                        <div className={styles.headerValue}>
+                                            <PiSprayBottle />
+                                            <p className={styles.nameValue}>Last Fertilization</p>
+                                        </div>
+                                        <p key={`fert-${animateKey}`} className={`${styles.dataValue} ${styles.animatedValue}`}>
+                                            {selectedStation.lastFertilization
+                                                ? new Date(selectedStation.lastFertilization).toLocaleDateString()
+                                                : "N/A"}
+                                        </p>
+
+                                    </div>
+                                    <div className={styles.value}>
+                                        <div className={styles.headerValue}>
+                                            <RiScissors2Line />
+                                            <p className={styles.nameValue}>Last Pruning</p>
+                                        </div>
+                                        <p key={`prune-${animateKey}`} className={`${styles.dataValue} ${styles.animatedValue}`}>
+                                            {selectedStation.lastPruning
+                                                ? new Date(selectedStation.lastPruning).toLocaleDateString()
+                                                : "N/A"}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                             <div className={styles.buttonDetails}>
-                                <button className={styles.buttonView}>View Details</button>
-                                <button className={styles.buttonSchedule}>Schedule Task</button>
+                                <button className={styles.buttonView} onClick={handleAskGreenOpsAI}>
+                                    Ask GreenOps AI
+                                </button>
+                                <button
+                                    className={styles.buttonSchedule}
+                                    onClick={() => handleScheduleTask(selectedStation?.name || "")}
+                                >
+                                    Schedule Task
+                                </button>
+
                             </div>
+                            {showActivityPopup && (
+                                <div className={styles.modalOverlay} onClick={closeActivityPopup}>
+                                    <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+                                        <p className={styles.titlePop}>Create New Activity</p>
+                                        <form className={styles.formContainer} onSubmit={handleSubmit}>
+                                            <div className={styles.inputGroup}>
+                                                <div className={styles.labels}>
+                                                    <label htmlFor="nameActivity">Activity Title</label>
+                                                </div>
+                                                <input
+                                                    id="nameActivity"
+                                                    name="nameActivity"
+                                                    type="text"
+                                                    placeholder="Enter activity title"
+                                                    value={title}
+                                                    onChange={(e) => setTitle(e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+
+                                            <div className={styles.inputGroup}>
+                                                <div className={styles.labels}>
+                                                    <label htmlFor="description">Description</label>
+                                                </div>
+                                                <input
+                                                    id="description"
+                                                    name="description"
+                                                    type="text"
+                                                    placeholder="Describe the activity"
+                                                    value={description}
+                                                    onChange={(e) => setDescription(e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+
+                                            <div className={styles.selectContainer}>
+                                                <div className={styles.inputGroup}>
+                                                    <div className={styles.labels}>
+                                                        <label htmlFor="types">Activity Type</label>
+                                                    </div>
+                                                    <div className={styles.selectWrapper}>
+                                                        <select
+                                                            value={activityType}
+                                                            onChange={(e) => setActivityType(e.target.value)}
+                                                            className={styles.selectInput}
+                                                        >
+                                                            <option value="all">All Types</option>
+                                                            <option value="maintenance">Maintenance</option>
+                                                            <option value="repair">Repair</option>
+                                                            <option value="fertilizing">Fertilizing</option>
+                                                            <option value="pruning">Pruning</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                <div className={styles.inputGroup}>
+                                                    <div className={styles.labels}>
+                                                        <label htmlFor="priority">Priority</label>
+                                                    </div>
+                                                    <div className={styles.selectWrapper}>
+                                                        <select
+                                                            value={priority}
+                                                            onChange={(e) => setPriority(e.target.value)}
+                                                            className={styles.selectInput}
+                                                        >
+                                                            <option value="all">All Priorities</option>
+                                                            <option value="urgent">Urgent</option>
+                                                            <option value="high">High</option>
+                                                            <option value="medium">Medium</option>
+                                                            <option value="low">Low</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className={styles.inputGroup}>
+                                                <div className={styles.labels}>
+                                                    <label htmlFor="location">Location</label>
+                                                </div>
+                                                <div className={styles.selectWrapper}>
+                                                    <select
+                                                        value={location}
+                                                        onChange={(e) => setLocation(e.target.value)}
+                                                        className={styles.selectInput}
+                                                        disabled={locationLocked} // 🔒 blocca select
+                                                    >
+                                                        <option value="all">All Locations</option>
+                                                        <option value="North">North</option>
+                                                        <option value="South">South</option>
+                                                        <option value="East">East</option>
+                                                        <option value="West">West</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div className={styles.selectContainer}>
+                                                <div className={styles.inputGroup}>
+                                                    <div className={styles.labels}>
+                                                        <label htmlFor="date">Scheduled Date</label>
+                                                    </div>
+                                                    <input
+                                                        id="date"
+                                                        name="date"
+                                                        type="date"
+                                                        value={scheduledDate}
+                                                        onChange={(e) => setScheduledDate(e.target.value)}
+                                                        required
+                                                    />
+                                                </div>
+
+                                                <div className={styles.inputGroup}>
+                                                    <div className={styles.labels}>
+                                                        <label htmlFor="time">Scheduled Time</label>
+                                                    </div>
+                                                    <input
+                                                        id="time"
+                                                        name="time"
+                                                        type="time"
+                                                        value={scheduledTime}
+                                                        onChange={(e) => setScheduledTime(e.target.value)}
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className={styles.buttonContainer}>
+                                                <button type="submit" className={styles.createActivity}>Create Activity</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            )}
+
+                            {showAIReportPopup && (
+                                <div className={styles.modalOverlay} onClick={() => setShowAIReportPopup(false)}>
+                                    <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+                                        <p className={styles.titlePop}>AI Analysis for {selectedStation.name} Garden</p>
+                                        <p className={styles.subtitlePop}>Generated analysis based on current sensor data</p>
+
+                                        <div className={`${styles.areaTextReport} ${loading ? styles.loadingSkeleton : ""}`}>
+                                            <div className={styles.textReport}>
+                                                {aiChunks.trim()}
+                                            </div>
+                                        </div>
+
+
+                                        <div className={styles.buttonContainer}>
+                                            <button
+                                                className={`${styles.createActivity} ${(!suggestedTitle || !suggestedDescription || !suggestedType || loading) ? styles.disabled : ''}`}
+                                                disabled={!suggestedTitle || !suggestedDescription || !suggestedType || loading}
+                                                onClick={() => {
+                                                    const tomorrow = new Date();
+                                                    tomorrow.setDate(tomorrow.getDate() + 1);
+                                                    const yyyy = tomorrow.getFullYear();
+                                                    const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+                                                    const dd = String(tomorrow.getDate()).padStart(2, '0');
+                                                    const defaultDate = `${yyyy}-${mm}-${dd}`;
+
+                                                    setTitle(suggestedTitle);
+                                                    setDescription(suggestedDescription);
+                                                    setActivityType(suggestedType);
+                                                    setPriority("medium");
+                                                    setLocation(selectedStation?.name || "all");
+                                                    setScheduledDate(defaultDate); // 📅 giorno successivo
+                                                    setScheduledTime("09:00");     // 🕘 ora fissa
+                                                    setLocationLocked(true);
+                                                    setShowAIReportPopup(false);   // chiudi il popup AI
+                                                    setShowActivityPopup(true);    // apri il popup Create
+                                                }}
+
+                                            >
+                                                Create Activity
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                         </>
                     ) : (
                         <p className={styles.subTitle}>Click a station on the map to view details.</p>

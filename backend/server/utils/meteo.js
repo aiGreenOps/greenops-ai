@@ -22,11 +22,14 @@ async function getMeteo(lat, lon) {
       const item = forecast[i];
       const haPioggia = item.weather[0].main.toLowerCase().includes("rain") || item.rain;
       if (haPioggia) {
-        traQuanteOrePiovera = 36; // ogni step = 3 ore
+        const forecastTime = new Date(item.dt_txt); // orario previsto della pioggia
+        const now = new Date();
+        const diffMs = forecastTime - now;
+        traQuanteOrePiovera = Math.round(diffMs / (1000 * 60 * 60)); // ore intere
         break;
       }
     }
-    
+
     return {
       pioveOra,
       traQuanteOrePiovera
