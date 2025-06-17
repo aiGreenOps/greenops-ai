@@ -7,14 +7,24 @@ import { FaRegLightbulb } from "react-icons/fa";
 import { IoIosNotificationsOutline } from "react-icons/io";
 import Estimator from '@/components/Estimators';
 import { useEffect, useRef, useState } from 'react';
-import { useSensorData } from "@/context/SensorContext";
+import { StationSensorData, useSensorData } from "@/context/SensorContext";
 import AggregatedChart from '@/components/AggregatedChart';
+import { io } from "socket.io-client";
+import { toast } from 'react-toastify';
+import { GoAlert } from 'react-icons/go';
 
 export default function UserDashboardPage() {
+    const [stations, setStations] = useState<StationSensorData[]>([]);
+    const [recentAlerts, setRecentAlerts] = useState<
+        { time: string; description: string; status: string }[]
+    >([]);
+
     const sensor = useSensorData();
     const agg = sensor?.current?.aggregated;
     const template = generateDayTemplate();
     const merged = mergeWithTemplate(template, sensor?.today || []);
+    const [newAlertCount, setNewAlertCount] = useState(0);
+    const hasHandledFirstBatch = useRef(false); // 👈 per ignorare il primo evento
 
     const [visibleLines, setVisibleLines] = useState({
         temperature: true,
@@ -40,10 +50,48 @@ export default function UserDashboardPage() {
         rain: 0
     });
 
+    async function handleIrrigationToggle(stationId: string, isCurrentlyActive: boolean) {
+        const url = isCurrentlyActive
+            ? `${process.env.NEXT_PUBLIC_API_BASE}/api/irrigation/stop`
+            : `${process.env.NEXT_PUBLIC_API_BASE}/api/irrigation/start`;
+
+        try {
+            const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ stationId })
+            });
+
+            const result = await res.json();
+
+            if (!res.ok) {
+                throw new Error(result.message || "Errore");
+            }
+
+            toast.success(result.message);
+
+            setStations(prev =>
+                prev.map(s => {
+                    if (s._id === stationId) {
+                        return {
+                            ...s,
+                            isIrrigating: !isCurrentlyActive,
+                            irrigationStartTime: !isCurrentlyActive ? new Date().toISOString() : null,
+                            lastIrrigation: isCurrentlyActive ? new Date().toISOString() : s.lastIrrigation
+                        };
+                    }
+                    return s;
+                })
+            );
+        } catch (err: any) {
+            toast.error(err.message || "Errore durante l'aggiornamento irrigazione");
+        }
+    }
+
+
     useEffect(() => {
         if (agg && previous.current) {
             const prev = previous.current;
-
             if (
                 agg.temperature == null || prev.temperature == null ||
                 agg.humidityPct == null || prev.humidityPct == null ||
@@ -75,7 +123,42 @@ export default function UserDashboardPage() {
     const [loading, setLoading] = useState(true);
     const hasStarted = useRef(false); // flag che vive tra i render
 
+    function getTimeAgo(isoTime: string): string {
+        const now = new Date();
+        const then = new Date(isoTime);
+        const diffMs = now.getTime() - then.getTime();
+        const diffSec = Math.floor(diffMs / 1000);
+
+        if (diffSec < 60) return `${diffSec} seconds ago`;
+        const diffMin = Math.floor(diffSec / 60);
+        if (diffMin < 60) return `${diffMin} minutes ago`;
+        const diffHrs = Math.floor(diffMin / 60);
+        if (diffHrs < 24) return `${diffHrs} hours ago`;
+
+        const diffDays = Math.floor(diffHrs / 24);
+        return `${diffDays} days ago`;
+    }
+
+    function toFullISO(timeStr: string) {
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        return new Date(`${today}T${timeStr}`);
+    }
+
+
     useEffect(() => {
+
+        async function fetchStations() {
+            try {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/api/stations`);
+                if (!res.ok) throw new Error("Errore nel recupero stazioni");
+                const data = await res.json();
+                setStations(data);
+            } catch (err) {
+                console.error("❌ Errore fetch iniziale stazioni:", err);
+            }
+        }
+        fetchStations();
+
         async function fetchStreamingReport() {
             if (hasStarted.current) return; // blocca se già partito
             hasStarted.current = true;
@@ -120,6 +203,77 @@ export default function UserDashboardPage() {
         }
 
         fetchStreamingReport();
+
+        const socket = io("http://localhost:3001"); // ✅ URL backend
+        socket.on("station-alert", (alertData) => {
+            console.log("🔔 ALERT ricevuto:", alertData);
+
+            setStations(alertData.stations || []);
+
+            const nuoviAlert = (alertData.alerts || []).map((alert: { timestamp: string; description: string; newStatus: string }) => ({
+                time: new Date(alert.timestamp).toLocaleTimeString(),
+                description: alert.description,
+                status: alert.newStatus
+            }));
+
+            setRecentAlerts(prev => {
+                const alreadyPresent = new Set(prev.map(a => `${a.time}-${a.description}`));
+                const onlyNew = nuoviAlert.filter((a: { time: string; description: string; status: string }) =>
+                    !alreadyPresent.has(`${a.time}-${a.description}`)
+                );
+
+                // ✅ aggiorna il conteggio dei nuovi alert
+                if (onlyNew.length > 0) {
+                    setNewAlertCount(onlyNew.length);
+                }
+
+                const combined = [...onlyNew, ...prev];
+                return combined.slice(0, 6);
+            });
+        });
+
+
+        socket.on("irrigation-stopped-batch", (data: {
+            stopped: {
+                stationId: string;
+                stationName: string;
+                plantType: string;
+                endedAt: string;
+                newStatus: string;
+            }[];
+            timestamp: string;
+        }) => {
+            console.log("💧 IRRIGAZIONE TERMINATA:", data);
+
+            // 🔁 Ignora il primo evento dopo montaggio
+            if (!hasHandledFirstBatch.current) {
+                hasHandledFirstBatch.current = true;
+                return;
+            }
+
+            if (!data.stopped?.length) return;
+
+            setStations(prevStations =>
+                prevStations.map(station => {
+                    const match = data.stopped.find(s => s.stationId === station._id?.toString());
+                    if (match) {
+                        const updated: StationSensorData = {
+                            ...station,
+                            isIrrigating: false,
+                            irrigationStartTime: null,
+                            status: (match.newStatus as "healthy" | "warning" | "critical") ?? station.status
+                        };
+                        return updated;
+                    }
+                    return station;
+                })
+            );
+
+
+            toast.info(`Irrigation ended for ${data.stopped.length} station(s)`);
+        });
+
+
     }, []);
 
 
@@ -215,12 +369,60 @@ export default function UserDashboardPage() {
                         <p className={styles.titleContainer}>Recent Alerts</p>
                         <div className={styles.notifyAlerts}>
                             <IoIosNotificationsOutline />
-                            <p className={styles.notifyNumber}>1 New</p>
+                            <p className={styles.notifyNumber}>{newAlertCount} New</p>
                         </div>
                     </div>
+                    <div className={styles.alertList}>
+                        {recentAlerts.map((alert, i) =>
+                            <div key={i} className={`${styles.alertItem} ${styles[alert.status]}`}>
+                                <GoAlert className={styles.alertIcon} />
+                                <div className={styles.alertTextContainer}>
+                                    <p className={styles.alertText}>{alert.description}</p>
+                                    <p className={styles.alertTime}>
+                                        {getTimeAgo(toFullISO(alert.time).toISOString())} - {alert.status}
+                                    </p>
+                                </div>
+                                {/* <p className={styles.alertStatus}>{alert.status}</p> */}
+                            </div>
+                        )}
+                    </div>
+                    <button className={styles.allAlertsBtn}>View All Alerts</button>
                 </div>
+
             </div>
             <div className={styles.thirdContainer}>
+                <div className={styles.tableWrapper}>
+                    <p className={styles.titleTable}>Managed Green Spaces</p>
+                    <div className={styles.header}>
+                        <div>Name</div>
+                        <div>Status</div>
+                        <div>Plant Type</div>
+                        <div>Irrigation</div>
+                    </div>
+
+                    {stations.map((singleStation) => (
+                        <div key={singleStation._id} className={styles.row}>
+                            <p className={styles.textTitle}>{singleStation.name} Garden</p>
+                            <div className={`${styles.statuStation} ${styles[singleStation.status]}`}>
+                                {singleStation.status}
+                            </div>
+                            <div className={styles.typeContainer}>
+                                <LuLeaf className={styles.iconType} />
+                                <p className={styles.typePlant}>
+                                    {singleStation.plantType}
+                                </p>
+                            </div>
+                            <div className={styles.irrigationToggle}>
+                                <button
+                                    className={`${styles.toggleSwitch} ${singleStation.isIrrigating ? styles.active : ""}`}
+                                    onClick={() => handleIrrigationToggle(singleStation._id!, singleStation.isIrrigating)}
+                                >
+                                    <span className={styles.toggleCircle} />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );

@@ -5,11 +5,13 @@ const path = require("path");
 const passport = require("passport");
 const http = require("http");
 const dotenv = require("dotenv");
+const cron = require("node-cron");
 dotenv.config();
 require("./config/passport.config");
 
 const connectDB = require("./config/db.config");
 const seedAdmin = require("./scripts/seedAdmin");
+const Activity = require("./models/activity.model");
 
 const authRoutes = require("./routes/auth.routes");
 const adminRoutes = require("./routes/admin.routes");
@@ -20,7 +22,10 @@ const stationRoutes = require('./routes/station.routes');
 const userRoutes = require('./routes/user.routes');
 const sessionRoutes = require('./routes/session.routes');
 const activityRoutes = require('./routes/activity.routes');
+const irrigationRoutes = require("./routes/irrigation.routes");
+const reportRoutes = require('./routes/reports.routes');
 
+const { eseguiRichiestaGiornalieraLLM } = require("./utils/eseguiRichiestaGiornalieraLLM");
 const { router: twoFaRouter, authenticateHandler } = require("./routes/2fa.routes");
 const { protect } = require("./middleware/auth.middleware");
 
@@ -60,10 +65,101 @@ app.use("/api/2fa", protect, twoFaRouter);
 app.use('/api/user', userRoutes);
 app.use('/api/session', sessionRoutes);
 app.use('/api/activities', activityRoutes);
+app.use("/api/irrigation", irrigationRoutes);
+app.use('/api/reports', reportRoutes);
 
 connectDB()
     .then(async () => {
         await seedAdmin();
+
+        const stopIrrigationIfDue = require("./scripts/autoStopIrrigation");
+
+        cron.schedule("* * * * *", async () => {
+            try {
+                await stopIrrigationIfDue(io);
+            } catch (err) {
+                console.error("❌ Errore auto-stop irrigazione:", err);
+            }
+        });
+
+        // ✅ Avvio cron job per analisi potatura/fertilizzazione ogni giorno alle 6:00
+        cron.schedule("0 6 * * *", async () => {
+            console.log("🧪 ESECUZIONE MANUALE DEL CRON LLM");
+            try {
+                const stazioniRaw = await Station.find().lean();
+
+                const stazioni = stazioniRaw.map(s => ({
+                    name: s.name.toLowerCase(),
+                    plantType: s.plantType || "non specificato",
+                    lastPruning: s.lastPruning
+                        ? new Date(s.lastPruning).toISOString().split("T")[0]
+                        : null,
+                    lastFertilization: s.lastFertilization
+                        ? new Date(s.lastFertilization).toISOString().split("T")[0]
+                        : null
+                }));
+
+                const risultato = await eseguiRichiestaGiornalieraLLM({ stazioni });
+
+                const oggi = new Date();
+                const domaniAlle9 = new Date(oggi);
+                domaniAlle9.setDate(domaniAlle9.getDate() + 1);
+                domaniAlle9.setHours(9, 0, 0, 0);
+
+                for (const [stationName, values] of Object.entries(risultato)) {
+                    if (values.pruning) {
+                        const exists = await Activity.findOne({
+                            location: stationName,
+                            type: "pruning",
+                            status: { $in: ["scheduled", "inProgress"] }
+                        });
+
+                        if (!exists) {
+                            const pruningTask = new Activity({
+                                title: `Scheduled pruning - ${stationName}`,
+                                description: values.pruningReason || `The AI system has detected the need for pruning at the ${stationName} station.`,
+                                type: "pruning",
+                                priority: "medium",
+                                location: stationName,
+                                scheduledAt: domaniAlle9,
+                                generatedByAI: true
+                            });
+                            await pruningTask.save();
+                            console.log(`🌿 Pruning activity created for ${stationName}`);
+                        } else {
+                            console.log(`⚠️ Pruning already scheduled or in progress for ${stationName}, skipping.`);
+                        }
+                    }
+
+                    if (values.fertilization) {
+                        const exists = await Activity.findOne({
+                            location: stationName,
+                            type: "fertilizing",
+                            status: { $in: ["scheduled", "inProgress"] }
+                        });
+
+                        if (!exists) {
+                            const fertilizingTask = new Activity({
+                                title: `Scheduled fertilization - ${stationName}`,
+                                description: values.fertilizationReason || `The AI system has detected the need for fertilization at the ${stationName} station.`,
+                                type: "fertilizing",
+                                priority: "medium",
+                                location: stationName,
+                                scheduledAt: domaniAlle9,
+                                generatedByAI: true
+                            });
+                            await fertilizingTask.save();
+                            console.log(`🌱 Fertilization activity created for ${stationName}`);
+                        } else {
+                            console.log(`⚠️ Fertilization already scheduled or in progress for ${stationName}, skipping.`);
+                        }
+                    }
+                }
+
+            } catch (err) {
+                console.error("❌ Errore esecuzione LLM giornaliero:", err);
+            }
+        })
 
         // ✅ Mappa stazioni tramite nome
         const stations = await Station.find();
@@ -77,6 +173,20 @@ connectDB()
             South: stations.find(s => s.name.toLowerCase().includes('south'))?._id,
             West: stations.find(s => s.name.toLowerCase().includes('west'))?._id,
         };
+
+        const stationDetailsMap = {};
+        for (const s of stations) {
+            stationDetailsMap[s._id.toString()] = {
+                _id: s._id,
+                name: s.name,
+                plantType: s.plantType,
+                status: s.status,
+                lastIrrigation: s.lastIrrigation,
+                isIrrigating: s.isIrrigating,
+                irrigationStartTime: s.irrigationStartTime,
+                coordinates: s.coordinates
+            };
+        }
 
         if (Object.values(stationMap).some(v => !v)) {
             console.error("❌ Nomi stazioni nel DB non corrispondono a North/East/South/West");
@@ -118,7 +228,7 @@ connectDB()
             ];
 
             const allEntries = [realEntry, ...simulatedEntries];
-            
+
             const avg = {
                 temperature: +(allEntries.reduce((a, b) => a + b.temperature, 0) / allEntries.length).toFixed(1),
                 humidity: +(allEntries.reduce((a, b) => a + b.humidity, 0) / allEntries.length).toFixed(1),
@@ -138,10 +248,45 @@ connectDB()
                 await SensorData.insertMany(allEntries);
                 await AggregatedSensorData.create(aggregated);
 
+                const stationsWithDetails = allEntries.map(entry => {
+                    const details = stationDetailsMap[entry.stationId.toString()] || {};
+                    return {
+                        ...entry,
+                        ...details
+                    };
+                });
+
+                const { classifyAndHandleIrrigation } = require("./utils/classifyStationStatus");
+                await classifyAndHandleIrrigation(stationsWithDetails, io);
+
+                const refreshedStations = await Station.find().lean();
+                const updatedStationMap = {};
+                for (const s of refreshedStations) {
+                    updatedStationMap[s._id.toString()] = {
+                        _id: s._id,
+                        name: s.name,
+                        plantType: s.plantType,
+                        status: s.status,
+                        lastIrrigation: s.lastIrrigation,
+                        isIrrigating: s.isIrrigating,
+                        irrigationStartTime: s.irrigationStartTime,
+                        coordinates: s.coordinates
+                    };
+                }
+
+                const updatedStationsWithDetails = allEntries.map(entry => {
+                    const updated = updatedStationMap[entry.stationId.toString()] || {};
+                    return {
+                        ...entry,
+                        ...updated
+                    };
+                });
+
                 io.emit('sensor-update', {
                     aggregated,
-                    stations: allEntries
+                    stations: updatedStationsWithDetails
                 });
+
 
                 lastSaveTimestamp = now;
             } catch (e) {

@@ -51,7 +51,7 @@ Sei un assistente per la manutenzione delle aree verdi. Analizza i dati seguenti
 
 📌 Linee guida per piante comuni:
 - Ulivi: potare in inverno (gennaio-marzo), fertilizzare in primavera.
-- Palme: potare in primavera, fertilizzare a fine estate.
+- Prato: tagliare frequentemente in primavera ed estate, fertilizzare in primavera e inizio autunno.
 - Siepi: potare in primavera e fine estate, fertilizzare in aprile/maggio.
 - Aiuole: potare e fertilizzare in base alla varietà, ma evitare estate.
 

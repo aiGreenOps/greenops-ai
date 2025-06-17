@@ -37,6 +37,8 @@ const stationSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
     },
+    isIrrigating: { type: Boolean, default: false },
+    irrigationStartTime: { type: Date, default: null }
 });
 
 module.exports = mongoose.model('Station', stationSchema);

@@ -22,6 +22,7 @@ body {
     --input-hover: rgb(243, 244, 246);
     --text-primary-color: rgb(0, 0, 0);
     --text-secondary-color: rgb(75, 85, 99);
+    --text-four-color: rgb(107, 114, 128);
     --nav-item-active: rgb(236, 253, 245);
     --nav-item-hover: rgb(243, 244, 246);
     --nav-text-active: rgb(75, 85, 99);
@@ -37,7 +38,11 @@ body {
     --toggle-red: rgba(254, 226, 226, 255);
     --text-toggle-red: rgb(153, 27, 2);
     --toggle-blue: rgba(219, 234, 254, 255);
-    --text-toggle-blue: rgb(30, 64, 175)
+    --text-toggle-blue: rgb(30, 64, 175);
+    --toggle-yellow: rgb(254, 249, 195);
+    --text-toggle-yellow: rgb(133, 77, 14);
+    --filter-bg: rgb(236, 253, 245);
+
 }
 
 
@@ -50,6 +55,7 @@ body {
     --input-hover: rgb(75, 85, 99);
     --text-primary-color: rgb(255, 255, 255);
     --text-secondary-color: rgb(160, 164, 172);
+    --text-four-color: rgb(156, 163, 175);
     --nav-item-active: rgb(55, 65, 81);
     --nav-item-hover: rgb(55, 65, 81);
     --nav-text-active: rgb(60, 207, 151);
@@ -66,4 +72,7 @@ body {
     --text-toggle-red: rgb(252, 165, 165);
     --toggle-blue: rgba(31, 47, 80, 255);
     --text-toggle-blue: rgb(147, 197, 253);
+    --toggle-yellow: rgba(133, 77, 14, 0.3);
+    --text-toggle-yellow: rgb(253, 224, 7);
+    --filter-bg: rgba(0, 30, 24, 0.2);
 }

@@ -1,5 +1,6 @@
 const { eseguiRichiestaLLM } = require("../utils/eseguiRichiestaLlm");
 const { eseguiAnalisiGreenOpsLLM } = require("../utils/eseguiAnalisiGreenOpsLLM");
+const { eseguiRichiestaGiornalieraLLM } = require("../utils/eseguiRichiestaGiornalieraLLM");
 
 exports.getAIResponse = async (req, res) => {
     const { messaggio, posizione } = req.body;
@@ -35,3 +36,19 @@ exports.getGreenOpsLLMAnalysis = async (req, res) => {
 };
 
 
+exports.getPotaturaEFertilizzazioneSuggerimenti = async (req, res) => {
+    try {
+        const stazioni = req.body.stazioni;
+
+        if (!stazioni || !Array.isArray(stazioni)) {
+            return res.status(400).json({ error: "Formato dati non valido. Atteso: { stazioni: [...] }" });
+        }
+
+        const risultato = await eseguiRichiestaGiornalieraLLM({ stazioni });
+
+        return res.status(200).json(risultato);
+    } catch (err) {
+        console.error("❌ Errore AI manutenzione:", err);
+        return res.status(500).json({ error: "Errore durante l'elaborazione della richiesta." });
+    }
+};

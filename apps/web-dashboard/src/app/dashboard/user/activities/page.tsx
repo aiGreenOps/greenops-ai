@@ -1,6 +1,6 @@
 'use client';
 
-import { IoPodiumOutline, IoSearchOutline } from 'react-icons/io5';
+import { IoLocationOutline, IoPodiumOutline, IoSearchOutline } from 'react-icons/io5';
 import styles from './activities.module.css'
 import { BsList } from 'react-icons/bs';
 import { PiSlidersHorizontal } from 'react-icons/pi';
@@ -330,7 +330,7 @@ export default function ActivitiesDashboardPage() {
                     </div>
 
                     <div className={styles.selectWrapper}>
-                        <IoPodiumOutline className={styles.inputIcon} />
+                        <IoLocationOutline className={styles.inputIcon} />
                         <select
                             value={locationFilter}
                             onChange={(e) => setLocationFilter(e.target.value)}
