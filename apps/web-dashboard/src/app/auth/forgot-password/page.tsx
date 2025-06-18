@@ -48,10 +48,11 @@ export default function ForgotPasswordPage() {
     return (
         <main className={styles.page}>
             <div className={styles.formContainer}>
-                <h1 className={styles.formTitle}>Recupera password</h1>
+                <h1 className={styles.formTitle}>Reset Password</h1>
                 <p className={styles.formParag}>
-                    Inserisci la tua email per ricevere il link di recupero
+                    Enter your email to receive the recovery link
                 </p>
+
 
                 <form onSubmit={handleSubmit}>
                     <div className={styles.inputGroup}>
@@ -72,13 +73,13 @@ export default function ForgotPasswordPage() {
                         className={styles.submitButton}
                         disabled={loading}
                     >
-                        {loading ? "Invio..." : "Invia link di recupero"}
+                        {loading ? "Sending..." : "Send recovery link"}
                     </button>
                 </form>
                 <p className={`${styles.registerAdv} ${styles.advMoreSpace}`}>
-                    Ricordi la password?{" "}
+                    Remember your password?{" "}
                     <Link href="/auth/login" className={styles.link}>
-                        Accedi
+                        Sign in
                     </Link>
                 </p>
             </div>

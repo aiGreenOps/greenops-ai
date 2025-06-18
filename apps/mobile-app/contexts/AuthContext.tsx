@@ -3,7 +3,16 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-type User = { userId: string, firstName: string, lastName: string; email: string; role: 'dipendente' | 'manutentore' };
+export type User = {
+    userId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    // accetta sia italiano che inglese
+    role: 'admin' | 'dipendente' | 'manutentore' | 'employee' | 'maintainer';
+    profilePicture?: string;
+};
+
 
 interface AuthContextProps {
     user: User | null;
@@ -22,7 +31,9 @@ interface AuthContextProps {
 const AuthContext = createContext<AuthContextProps>(null!);
 
 // URL del tuo backend
-const API_URL = 'http://192.168.1.183:3001';
+// const API_URL = 'http://192.168.1.183:3001';
+const API_URL = 'http://172.20.10.3:3001';
+
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);

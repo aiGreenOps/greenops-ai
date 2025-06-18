@@ -1,6 +1,3 @@
-// app/auth/register/index.tsx
-
-import { AntDesign } from '@expo/vector-icons';
 import React, { useState, useMemo, useEffect } from 'react';
 import { PanGestureHandler, GestureHandlerRootView, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 import {
@@ -12,9 +9,19 @@ import {
     ScrollView,
     KeyboardAvoidingView,
     Platform,
+    Dimensions,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import { FontAwesome5 } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message'; // ✅ toast importato
 import { useAuth } from '../../../contexts/AuthContext';
+
+const { width, height } = Dimensions.get('window');
+
+const roleLabels: Record<'dipendente' | 'manutentore', string> = {
+    dipendente: 'Employee',
+    manutentore: 'Maintainer',
+};
 
 export default function RegisterPage() {
     const params = useLocalSearchParams<{
@@ -27,16 +34,12 @@ export default function RegisterPage() {
     const invitedEmail = params.email ?? '';
 
     let invitedRole: 'dipendente' | 'manutentore' = 'dipendente';
-
-    if (params.role === 'maintainer' || params.role === 'manutentore') {
-        invitedRole = 'manutentore';
-    } else if (params.role === 'employee' || params.role === 'dipendente') {
-        invitedRole = 'dipendente';
-    }
+    if (params.role === 'maintainer' || params.role === 'manutentore') invitedRole = 'manutentore';
+    else if (params.role === 'employee' || params.role === 'dipendente') invitedRole = 'dipendente';
 
     const isInvited = Boolean(invitationToken);
-
     const { register } = useAuth();
+
     const [form, setForm] = useState({
         nome: '',
         cognome: '',
@@ -57,7 +60,6 @@ export default function RegisterPage() {
         }
     };
 
-    // Quando arrivano i params, popola email + role
     useEffect(() => {
         if (isInvited) {
             setForm(f => ({
@@ -69,12 +71,10 @@ export default function RegisterPage() {
     }, [isInvited, invitedEmail, invitedRole]);
 
     const onChange = (field: keyof typeof form, value: string) => {
-        // blocca email e role se invitato
         if (isInvited && (field === 'email' || field === 'role')) return;
         setForm(f => ({ ...f, [field]: value }));
     };
 
-    // password rules
     const passwordRules = useMemo(() => {
         const pwd = form.password;
         return {
@@ -82,23 +82,22 @@ export default function RegisterPage() {
             uppercase: /[A-Z]/.test(pwd),
             number: /[0-9]/.test(pwd),
             specialChar: /[^A-Za-z0-9]/.test(pwd),
-            confirmMatch: pwd === form.confirm && pwd.length > 0,
         };
-    }, [form.password, form.confirm]);
-
-    const rulesList: { key: keyof typeof passwordRules; label: string }[] = [
-        { key: 'minLength', label: 'Minimo 8 caratteri' },
-        { key: 'uppercase', label: 'Una lettera maiuscola' },
-        { key: 'number', label: 'Un numero' },
-        { key: 'specialChar', label: 'Un carattere speciale' },
-        { key: 'confirmMatch', label: 'Password confermata' },
-    ];
+    }, [form.password]);
 
     const onSubmit = async () => {
-        if (form.password !== form.confirm) {
-            setErrors('Le password non corrispondono');
+        const rules = passwordRules;
+        const allValid = Object.values(rules).every(Boolean);
+
+        if (!allValid) {
+            Toast.show({
+                type: 'error',
+                text1: 'Invalid password',
+                text2: 'It must contain 8+ chars, uppercase, number and special symbol.',
+            });
             return;
         }
+
         try {
             await register({
                 nome: form.nome,
@@ -109,8 +108,20 @@ export default function RegisterPage() {
                 role: form.role,
                 ...(isInvited && { invitationToken }),
             });
-            router.replace('/auth/login');
+
+            Toast.show({
+                type: 'success',
+                text1: 'Registration successful',
+                text2: 'You can now log in',
+            });
+
+            setTimeout(() => router.replace('/auth/login'), 500); // redirect dopo il toast
         } catch (e: any) {
+            Toast.show({
+                type: 'error',
+                text1: 'Registration failed',
+                text2: e.message || 'Unexpected error occurred',
+            });
             setErrors(e.message || 'Errore di registrazione');
         }
     };
@@ -123,17 +134,44 @@ export default function RegisterPage() {
                     style={styles.flex}
                 >
                     <ScrollView contentContainerStyle={styles.container} scrollEnabled={false}>
-                        <Text style={styles.title}>Registrazione</Text>
-
-                        {errors ? <Text style={styles.errorText}>{errors}</Text> : null}
+                        <Text style={styles.title}>Create your account</Text>
+                        <Text style={styles.subTitle}>Join to report issues and help manage green spaces</Text>
 
                         {/* DATI ANAGRAFICI */}
                         {[
-                            { label: 'Nome', key: 'nome' },
-                            { label: 'Cognome', key: 'cognome' },
-                            { label: 'Email', key: 'email', keyboardType: 'email-address' },
-                            { label: 'Telefono', key: 'telefono', keyboardType: 'phone-pad' },
-                        ].map(({ label, key, keyboardType }) => (
+                            {
+                                label: 'First name',
+                                key: 'nome',
+                                keyboardType: 'default',
+                                textContentType: 'givenName',
+                                autoComplete: 'name-given',
+                                autoCapitalize: 'words',
+                            },
+                            {
+                                label: 'Last name',
+                                key: 'cognome',
+                                keyboardType: 'default',
+                                textContentType: 'familyName',
+                                autoComplete: 'name-family',
+                                autoCapitalize: 'words',
+                            },
+                            {
+                                label: 'Email',
+                                key: 'email',
+                                keyboardType: 'email-address',
+                                textContentType: 'emailAddress',
+                                autoComplete: 'email',
+                                autoCapitalize: 'none',
+                            },
+                            {
+                                label: 'Phone Number',
+                                key: 'telefono',
+                                keyboardType: 'phone-pad',
+                                textContentType: 'telephoneNumber',
+                                autoComplete: 'tel',
+                                autoCapitalize: 'none',
+                            },
+                        ].map(({ label, key, keyboardType, textContentType, autoComplete, autoCapitalize }) => (
                             <View key={key} style={styles.inputGroup}>
                                 <Text style={styles.label}>{label}</Text>
                                 <TextInput
@@ -141,7 +179,9 @@ export default function RegisterPage() {
                                     value={(form as any)[key]}
                                     onChangeText={v => onChange(key as any, v)}
                                     keyboardType={keyboardType as any}
-                                    autoCapitalize={key === 'email' ? 'none' : 'sentences'}
+                                    textContentType={textContentType as any}
+                                    autoComplete={autoComplete as any}
+                                    autoCapitalize={autoCapitalize as any}
                                     editable={!(isInvited && key === 'email')}
                                 />
                             </View>
@@ -155,36 +195,9 @@ export default function RegisterPage() {
                                 secureTextEntry
                                 value={form.password}
                                 onChangeText={v => onChange('password', v)}
+                                textContentType="newPassword"
+                                autoComplete="password-new"
                             />
-                        </View>
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Conferma Password</Text>
-                            <TextInput
-                                style={styles.input}
-                                secureTextEntry
-                                value={form.confirm}
-                                onChangeText={v => onChange('confirm', v)}
-                            />
-                        </View>
-
-                        {/* REQUISITI */}
-                        <View style={styles.requirements}>
-                            {rulesList.map(({ key, label }) => {
-                                const ok = passwordRules[key];
-                                return (
-                                    <View key={key} style={styles.reqRow}>
-                                        <AntDesign
-                                            name={ok ? 'checkcircle' : 'checkcircleo'}
-                                            size={16}
-                                            color={ok ? '#4caf50' : '#ccc'}
-                                            style={{ marginRight: 6 }}
-                                        />
-                                        <Text style={[styles.reqItem, ok && styles.reqItemOk]}>
-                                            {label}
-                                        </Text>
-                                    </View>
-                                );
-                            })}
                         </View>
 
                         {/* SELETTORE RUOLO */}
@@ -207,52 +220,141 @@ export default function RegisterPage() {
                                                 form.role === r && styles.roleTextActive,
                                             ]}
                                         >
-                                            {r.charAt(0).toUpperCase() + r.slice(1)}
+                                            {roleLabels[r]}
                                         </Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>
                         </View>
 
-                        {/* REGISTRATI */}
+                        {/* REGISTRAZIONE */}
                         <TouchableOpacity style={styles.button} onPress={onSubmit}>
-                            <Text style={styles.buttonText}>Registrati</Text>
+                            <FontAwesome5 name="user-plus" size={18} color="#fff" style={styles.buttonIcon} />
+                            <Text style={styles.buttonText}>Register</Text>
                         </TouchableOpacity>
 
                         {/* FOOTER */}
                         <View style={styles.footer}>
-                            <Text>Hai già un account? </Text>
-                            <TouchableOpacity onPress={() => router.replace('/auth/login')}>
-                                <Text style={styles.link}>Accedi</Text>
-                            </TouchableOpacity>
+                            <Text style={styles.registerAdv}>
+                                Already have an account?{' '}
+                                <Text style={styles.link} onPress={() => router.replace('/auth/login')}>
+                                    Sign in
+                                </Text>
+                            </Text>
                         </View>
                     </ScrollView>
                 </KeyboardAvoidingView>
             </PanGestureHandler>
-        </GestureHandlerRootView >
+        </GestureHandlerRootView>
     );
 }
 
 const styles = StyleSheet.create({
     flex: { flex: 1 },
-    container: { padding: 25, paddingTop: 25, backgroundColor: '#fff' },
-    title: { fontSize: 28, fontWeight: 'bold', marginBottom: 24, alignSelf: 'center' },
-    inputGroup: { marginBottom: 16 },
-    label: { marginBottom: 6, fontWeight: '600' },
-    input: { borderWidth: 1, borderColor: '#bbb', borderRadius: 8, height: 44, paddingHorizontal: 12 },
-    requirements: { marginBottom: 24, paddingLeft: 4 },
-    reqRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-    reqItem: { fontSize: 12, color: '#666' },
-    reqItemOk: { color: '#4caf50', textDecorationLine: 'line-through' },
-    roleContainer: { flexDirection: 'row', justifyContent: 'space-between' },
-    roleButton: { flex: 1, paddingVertical: 10, borderWidth: 1, borderColor: '#bbb', borderRadius: 8, alignItems: 'center' },
-    roleButtonSpacing: { marginLeft: 10 },
-    roleButtonActive: { backgroundColor: '#457b9d', borderColor: '#457b9d' },
-    roleText: { color: '#333', fontWeight: '500' },
-    roleTextActive: { color: '#fff', fontWeight: '600' },
-    button: { backgroundColor: '#457b9d', borderRadius: 8, height: 48, justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
-    buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-    footer: { flexDirection: 'row', justifyContent: 'center', marginBottom: 40 },
-    link: { color: '#1d3557', fontWeight: '600' },
+    container: {
+        paddingLeft: 25,
+        paddingRight: 25,
+        justifyContent: 'center',
+        backgroundColor: 'rgb(255, 255, 255)',
+        width: width,
+        height: height,
+    },
+    title: {
+        fontSize: 23,
+        fontWeight: 'bold',
+        alignSelf: 'center',
+    },
+    subTitle: {
+        marginTop: 8,
+        marginBottom: 24,
+        fontSize: 14,
+        color: '#4b5563',
+        fontWeight: '300',
+        alignSelf: 'center',
+    },
+    inputGroup: {
+        marginBottom: 32,
+    },
+    label: {
+        marginBottom: 8,
+        fontWeight: '600',
+    },
+    input: {
+        borderWidth: 1,
+        borderColor: 'rgb(232, 228, 236)',
+        borderRadius: 8,
+        height: 44,
+        paddingHorizontal: 12,
+    },
+    button: {
+        flexDirection: 'row',
+        backgroundColor: 'rgb(45, 106, 79)',
+        borderRadius: 8,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: -8,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    buttonText: {
+        color: '#fff',
+        fontWeight: '600',
+        fontSize: 16,
+    },
+    buttonIcon: {
+        marginRight: 8, // spazio tra icona e testo
+        fontSize: 16,
+    },
+    roleContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between'
+    },
+    roleButton: {
+        flex: 1,
+        paddingVertical: 10,
+        borderWidth: 1,
+        borderColor: 'rgb(232, 228, 236)',
+        borderRadius: 8,
+        alignItems: 'center'
+    },
+    roleButtonSpacing: {
+        marginLeft: 10
+    },
+    roleButtonActive: {
+        backgroundColor: 'rgb(45, 106, 79)',
+        borderColor: 'rgb(45, 106, 79)'
+    },
+    roleText: {
+        color: '#333',
+        fontWeight: '500'
+    },
+    roleTextActive: {
+        color: '#fff',
+        fontWeight: '600'
+    },
+    footer: {
+        marginTop: 0,
+        alignItems: 'center',
+    },
+    registerAdv: {
+        fontWeight: '300',
+        textAlign: 'center',
+        fontSize: 14, // ≈ 0.875rem
+        color: '#4b5563', // equivalente var(--text-secondary-color)
+    },
+
+    link: {
+        color: '#2d6a4f', // equivalente var(--button-primary)
+        fontSize: 14,
+        fontWeight: '500',
+        textDecorationLine: 'none', // opzionale, per ereditare
+        borderBottomWidth: 1,
+        borderBottomColor: 'transparent', // come in CSS
+    },
     errorText: { color: '#c00', marginBottom: 12, textAlign: 'center' },
 });
