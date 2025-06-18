@@ -4,15 +4,13 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type User = {
-    userId: string;
+    _id: string;
     email: string;
     firstName: string;
     lastName: string;
-    // accetta sia italiano che inglese
     role: 'admin' | 'dipendente' | 'manutentore' | 'employee' | 'maintainer';
     profilePicture?: string;
 };
-
 
 interface AuthContextProps {
     user: User | null;
@@ -30,10 +28,7 @@ interface AuthContextProps {
 
 const AuthContext = createContext<AuthContextProps>(null!);
 
-// URL del tuo backend
-// const API_URL = 'http://192.168.1.183:3001';
-const API_URL = 'http://172.20.10.3:3001';
-
+const API_URL = 'http://192.168.1.183:3001';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
@@ -67,10 +62,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             },
             body: JSON.stringify({ email, password }),
         });
+
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
             throw new Error(err.message || 'Credenziali non valide');
         }
+
         const { token, user: u }: { token: string; user: User } = await res.json();
         await AsyncStorage.setItem('token', token);
         setUser(u);
@@ -93,11 +90,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             phone: data.telefono,
             password: data.password,
             role: data.role,
-        }
-        // se ho invitationToken lo includo
+        };
         if (data.invitationToken) {
-            body.invitationToken = data.invitationToken
+            body.invitationToken = data.invitationToken;
         }
+
         const res = await fetch(`${API_URL}/api/auth/register`, {
             method: 'POST',
             headers: {
@@ -107,11 +104,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             },
             body: JSON.stringify(body),
         });
+
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
             throw new Error(err.message || 'Errore di registrazione');
         }
-        return;
     };
 
     const logout = async (): Promise<void> => {

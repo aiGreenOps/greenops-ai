@@ -13,12 +13,24 @@ import {
 } from 'react-native';
 import { useAuth } from '../../../contexts/AuthContext';
 import { router } from 'expo-router';
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
 import { AntDesign, FontAwesome, FontAwesome5 } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
 export default function LoginPage() {
     const { login } = useAuth();
+
+    const { user } = useAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (user) {
+            router.replace(`/dashboard/${user.role}`);
+        }
+    }, [user]);
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [err, setErr] = useState('');

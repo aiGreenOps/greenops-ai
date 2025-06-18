@@ -4,46 +4,58 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { router } from 'expo-router';
 import { FontAwesome5, Feather } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import { ScrollView } from 'react-native';
 
-const API_URL = Constants.expoConfig?.extra?.API_URL || 'http://172.20.10.3:3001';
+
+const API_URL = Constants.expoConfig?.extra?.API_URL || 'http://192.168.1.183:3001';
+
+type Task = {
+    title: string;
+    description: string;
+    location: string;
+    type: 'maintenance' | 'pruning' | 'fertilizing' | 'repair';
+    priority: 'low' | 'medium' | 'high' | 'urgent';
+    status: 'scheduled' | 'inProgress' | 'completed';
+    scheduledAt: string;
+};
 
 export default function ManutentoreDashboard() {
     const { user, logout } = useAuth();
-    const filters = ['All', 'New', 'In Progress', 'Done'];
+
+    const fetchTasks = async () => {
+        if (!user) return;
+        try {
+            setLoading(true);
+            const res = await fetch(`${API_URL}/api/activities/mobile?userId=${user._id}`);
+            const data = await res.json();
+            setTasks(data);
+        } catch (err) {
+            console.error('Failed to fetch tasks:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchTasks();
+    }, [user]);
+
+    const handleRefresh = () => {
+        fetchTasks();
+    };
+
+
+    const filters = ['All', 'Scheduled', 'In Progress', 'Completed'];
     const [activeFilter, setActiveFilter] = useState('All');
     const sliderAnim = useRef(new Animated.Value(0)).current;
     const [buttonWidths, setButtonWidths] = useState<number[]>([]);
 
-    const mockTasks = [
-        {
-            title: 'Irrigation System Check',
-            description: 'Check the sprinklers in the north area of the main garden',
-            location: 'Main Garden - North',
-            type: 'maintenance',
-            priority: 'high',
-            status: 'new',
-            scheduledAt: '2024-01-15T10:00:00Z',
-        },
-        {
-            title: 'Humidity Sensor Repair',
-            description: 'Replace damaged soil humidity sensor in greenhouse B',
-            location: 'Greenhouse B',
-            type: 'repair',
-            priority: 'urgent',
-            status: 'inProgress',
-            scheduledAt: '2024-01-15T15:00:00Z',
-        },
-        {
-            title: 'Indoor Plant Pruning',
-            description: 'Prune indoor plants on the second floor of the main building',
-            location: 'Indoor Plants - Level 2',
-            type: 'pruning',
-            priority: 'medium',
-            status: 'done',
-            scheduledAt: '2024-01-14T12:00:00Z',
-        },
-    ];
+    const [tasks, setTasks] = useState<Task[]>([]);
+    const [loading, setLoading] = useState(true);
 
+    const filteredTasks = tasks.filter(task => activeFilter === 'All' || task.status === activeFilter.toLowerCase());
+    const scheduledCount = tasks.filter(t => t.status === 'scheduled').length;
+    const inProgressCount = tasks.filter(t => t.status === 'inProgress').length;
 
     const onFilterPress = (index: number) => {
         setActiveFilter(filters[index]);
@@ -58,8 +70,11 @@ export default function ManutentoreDashboard() {
         }).start();
     };
 
+    const capitalize = (text: string) =>
+        text.charAt(0).toUpperCase() + text.slice(1);
 
     const resolvedImage = user?.profilePicture?.replace('http://localhost:3001', API_URL);
+
     if (!user) {
         return (
             <View style={styles.main}>
@@ -68,10 +83,15 @@ export default function ManutentoreDashboard() {
         );
     }
 
-    const handleRefresh = () => {
-        // TODO: aggiorna dati
-        console.log('refresh...');
-    };
+    if (loading) {
+        return <View style={styles.main}><Text style={{ color: '#888' }}>Loading tasks...</Text></View>;
+    }
+
+
+    const formatStatus = (status: string) =>
+        status
+            .replace(/([a-z])([A-Z])/g, '$1 $2') // aggiunge spazio prima delle lettere maiuscole
+            .replace(/^\w/, c => c.toUpperCase()); // maiuscola iniziale
 
     const handleSettings = () => {
         // TODO: naviga alle impostazioni
@@ -111,14 +131,14 @@ export default function ManutentoreDashboard() {
                         <Feather name="calendar" style={styles.iconCardBlue} size={20} />
                         <View style={styles.textCard}>
                             <Text style={styles.statLabel}>New activity</Text>
-                            <Text style={styles.statValue}>2</Text>
+                            <Text style={styles.statValue}>{scheduledCount}</Text>
                         </View>
                     </View>
                     <View style={styles.statCard}>
                         <Feather name="clock" style={styles.iconCardYellow} size={20} />
                         <View style={styles.textCard}>
                             <Text style={styles.statLabel}>In progress</Text>
-                            <Text style={styles.statValue}>2</Text>
+                            <Text style={styles.statValue}>{inProgressCount}</Text>
                         </View>
                     </View>
                 </View>
@@ -159,12 +179,20 @@ export default function ManutentoreDashboard() {
                     )}
                 </View>
 
-                {mockTasks
-                    .filter(task => activeFilter === 'All' || task.status === activeFilter.toLowerCase())
-                    .map((task, index) => (
-                        <View key={index} style={styles.taskCard}>
+                <ScrollView style={styles.taskList} showsVerticalScrollIndicator={false}>
+                    {filteredTasks.map((task, index) => (
+                        <View
+                            key={index}
+                            style={[
+                                styles.taskCard,
+                                index === filteredTasks.length - 1 && { marginBottom: 0 }
+                            ]}
+                        >
                             <View style={styles.taskHeader}>
-                                <Text style={styles.taskTitle}>{task.title}</Text>
+                                <View style={styles.taskTitleGroup}>
+                                    <Text style={styles.taskTitle}>{task.title}</Text>
+                                    <Text style={styles.taskType}>·  {task.type}</Text>
+                                </View>
                                 <Feather name="chevron-right" size={18} color="#9ca3af" />
                             </View>
 
@@ -179,35 +207,35 @@ export default function ManutentoreDashboard() {
                             <View style={styles.taskMeta}>
                                 <View style={styles.taskRow}>
                                     <Feather name="map-pin" size={14} color="#6b7280" />
-                                    <Text style={styles.taskLocation}>{task.location}</Text>
+                                    <Text style={styles.taskLocation}>{capitalize(task.location)} Garden</Text>
                                 </View>
+                            </View>
+
+                            <View style={styles.taskRowJustified}>
+                                <View style={styles.taskRow}>
+                                    <Feather name="clock" size={14} color="#6b7280" />
+                                    <Text style={styles.taskTime}>
+                                        {new Date(task.scheduledAt).toLocaleString('en-GB', {
+                                            day: '2-digit',
+                                            month: 'short',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                        })}
+                                    </Text>
+                                </View>
+
                                 <View style={styles.taskBadges}>
+                                    <Text style={[styles.badge, styles[`status_${task.status}` as keyof typeof styles]]}>
+                                        {formatStatus(task.status)}
+                                    </Text>
                                     <Text style={[styles.badge, styles[`priority_${task.priority}` as keyof typeof styles]]}>
                                         {task.priority}
                                     </Text>
-                                    <Text style={[styles.badge, styles[`status_${task.status}` as keyof typeof styles]]}>
-                                        {task.status}
-                                    </Text>
-                                    <Text style={[styles.badge, styles[`type_${task.type}` as keyof typeof styles]]}>
-                                        {task.type}
-                                    </Text>
-
                                 </View>
-                            </View>
-
-                            <View style={styles.taskRow}>
-                                <Feather name="clock" size={14} color="#6b7280" />
-                                <Text style={styles.taskTime}>
-                                    {new Date(task.scheduledAt).toLocaleString('en-GB', {
-                                        day: '2-digit',
-                                        month: 'short',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                    })}
-                                </Text>
                             </View>
                         </View>
                     ))}
+                </ScrollView>
             </View>
 
         </View>
@@ -227,6 +255,7 @@ const styles = StyleSheet.create({
         paddingBottom: 10,
         borderBottomWidth: 1,
         borderBottomColor: 'rgb(232, 228, 236)',
+        height: 52.8,
     },
     avatar: {
         backgroundColor: '#2d6a4f',
@@ -282,6 +311,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginLeft: 10,
+    },
+    taskList: {
+        flex: 1,
     },
     main: {
         flex: 1,
@@ -412,6 +444,18 @@ const styles = StyleSheet.create({
         color: '#4b5563',
         marginBottom: 8,
     },
+    taskTitleGroup: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 6,
+    },
+    taskType: {
+        fontSize: 13,
+        color: '#6b7280',
+        fontWeight: '500',
+    },
     taskMeta: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -442,25 +486,28 @@ const styles = StyleSheet.create({
         color: '#fff',
     },
     priority_high: {
-        backgroundColor: '#f59e0b'
+        backgroundColor: 'rgba(249, 115, 22, 255)'
     },
     priority_urgent: {
-        backgroundColor: '#dc2626'
+        backgroundColor: 'rgba(239, 68, 68, 255)'
     },
     priority_medium: {
-        backgroundColor: '#3b82f6'
+        backgroundColor: 'rgba(234, 179, 8, 255)'
     },
     priority_low: {
-        backgroundColor: '#10b981'
+        backgroundColor: 'rgba(34, 197, 94, 255)'
     },
-    status_new: {
-        backgroundColor: '#6366f1'
+    status_scheduled: {
+        backgroundColor: 'rgb(243, 244, 246)',
+        color: 'rgb(31, 41, 55)',
     },
     status_inProgress: {
-        backgroundColor: '#f97316'
+        backgroundColor: 'rgb(243, 244, 246)',
+        color: 'rgb(31, 41, 55)',
     },
-    status_done: {
-        backgroundColor: '#22c55e'
+    status_completed: {
+        backgroundColor: 'rgb(243, 244, 246)',
+        color: 'rgb(31, 41, 55)',
     },
     type_maintenance: {
         backgroundColor: '#06b6d4'
@@ -479,5 +526,9 @@ const styles = StyleSheet.create({
         color: '#6b7280',
         marginTop: 2,
     },
-
+    taskRowJustified: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
 });

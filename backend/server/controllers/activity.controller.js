@@ -34,3 +34,22 @@ exports.deleteActivity = async (req, res) => {
     }
 };
 
+exports.getActivitiesForMaintainer = async (req, res) => {
+    try {
+        const userId = req.query.userId;
+        if (!userId) return res.status(400).json({ message: 'Missing userId' });
+
+        const activities = await Activity.find({
+            $or: [
+                { status: 'scheduled', assignedTo: null },
+                { assignedTo: userId }
+            ]
+        }).sort({ scheduledAt: 1 });
+
+        res.json(activities);
+    } catch (err) {
+        console.error('Error fetching maintainer activities:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+

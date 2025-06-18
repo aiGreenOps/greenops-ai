@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         borderTopWidth: 1,
         borderTopColor: 'rgb(232, 228, 236)',
-        backgroundColor: 'transparent',
+        backgroundColor: 'rgb(255, 255, 255)',
         paddingVertical: 16,
         paddingBottom: 24,
         justifyContent: 'space-around',

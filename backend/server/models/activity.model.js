@@ -8,6 +8,7 @@ const activitySchema = new mongoose.Schema({
     location: { type: String, required: true },
     scheduledAt: { type: Date, required: true },
     status: { type: String, enum: ['scheduled', 'completed', 'inProgress'], default: 'scheduled' },
+    assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     createdAt: { type: Date, default: Date.now },
     generatedByAI: { type: Boolean, default: false }
 });

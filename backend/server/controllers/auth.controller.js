@@ -386,6 +386,7 @@ exports.forgotPassword = async (req, res) => {
     const token = jwt.sign({ userId: user._id }, jwtSecret, { expiresIn: "15m" });
 
     await PasswordResetToken.create({
+        _id: user._id,
         userId: user._id,
         token,
         expiresAt: new Date(Date.now() + 15 * 60 * 1000),
