@@ -111,12 +111,12 @@ export default function TwoFactorSetup({ enabled, onToggle }: Props) {
                 <br />
                 <div className={styles.inputGroup}>
                     <input
-                        placeholder="Inserisci codice OTP"
+                        placeholder="Enter OTP code"
                         value={token}
                         onChange={e => setToken(e.target.value)}
                     />
                 </div>
-                <button className={`${styles.submitButton} ${styles.btnPop}`} onClick={verify}>Verifica e Abilita</button>
+                <button className={`${styles.submitButton} ${styles.btnPop}`} onClick={verify}>Verify and Enable</button>
                 {error && <p style={{ color: 'red' }}>{error}</p>}
             </div>
         );

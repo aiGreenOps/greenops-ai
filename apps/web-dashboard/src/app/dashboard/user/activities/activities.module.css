@@ -319,6 +319,7 @@
     margin: 0;
     font-size: 0.75rem;
     color: var(--text-secondary-color);
+    padding-right: 0.2rem;
 }
 
 .activityType {

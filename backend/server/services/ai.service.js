@@ -1,6 +1,7 @@
 const { eseguiRichiestaLLM } = require("../utils/eseguiRichiestaLlm");
 const { eseguiAnalisiGreenOpsLLM } = require("../utils/eseguiAnalisiGreenOpsLLM");
 const { eseguiRichiestaGiornalieraLLM } = require("../utils/eseguiRichiestaGiornalieraLLM");
+const { eseguiAnalisiGreenOpsMobileLLM } = require("../utils/eseguiAnalisiGreenOpsMobileLLM");
 
 exports.getAIResponse = async (req, res) => {
     const { messaggio, posizione } = req.body;
@@ -50,5 +51,33 @@ exports.getPotaturaEFertilizzazioneSuggerimenti = async (req, res) => {
     } catch (err) {
         console.error("❌ Errore AI manutenzione:", err);
         return res.status(500).json({ error: "Errore durante l'elaborazione della richiesta." });
+    }
+};
+
+
+const Station = require('../models/station.model'); // importa correttamente il modello
+
+exports.getGreenOpsMobileAnalysis = async (req, res) => {
+    const attivita = req.body;
+    const location = attivita.location;
+
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+
+    try {
+        if (!location) {
+            return res.status(400).end("Campo 'location' mancante.");
+        }
+
+        const stazione = await Station.findOne({ name: location });
+
+        if (!stazione) {
+            return res.status(404).end(`Stazione '${location}' non trovata.`);
+        }
+
+        await eseguiAnalisiGreenOpsMobileLLM({ attivita, stazione, res });
+
+    } catch (err) {
+        console.error("❌ Errore AI mobile:", err.message);
+        res.status(500).end("Errore lato server.");
     }
 };

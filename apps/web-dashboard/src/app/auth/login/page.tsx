@@ -139,10 +139,16 @@ export default function LoginPage() {
         return (
             <main className={styles.page}>
                 <div className={styles.formContainer}>
-                    <h1 style={{ textAlign: "center" }}>Verifica 2FA</h1>
+                    <h1 className={styles.formTitle}>2FA Verification</h1>
+                    <p className={styles.formParag}>
+                        Enter your OTP code or a recovery code
+                    </p>
                     <form onSubmit={handle2FASubmit}>
                         <div className={styles.inputGroup}>
-                            <label htmlFor="otp">Codice OTP o recovery</label>
+                            <div className={styles.labels}>
+                                <label htmlFor="otp">OTP o recovery code</label>
+                            </div>
+
                             <input
                                 id="otp"
                                 name="otp"
@@ -160,7 +166,7 @@ export default function LoginPage() {
                                     checked={useRecovery}
                                     onChange={e => setUseRecovery(e.target.checked)}
                                 />{" "}
-                                Usa recovery code
+                                Use recovery code
                             </label>
                         </div>
                         <button
@@ -170,7 +176,7 @@ export default function LoginPage() {
                         >
                             {loading ? "Verifica…" : (
                                 <>
-                                    <FaSignInAlt style={{ marginRight: 6 }} /> Verifica
+                                    <FaSignInAlt style={{ marginRight: 6 }} /> Verify
                                 </>
                             )}
                         </button>

@@ -35,6 +35,7 @@ const io = require("socket.io")(server, {
     cors: { origin: "http://localhost:3000", credentials: true },
 });
 app.set("io", io);
+require("./sockets/llmSocket")(io);
 
 // MODELS & SENSOR
 const sensorReader = require("../../iot/sensorReader");

@@ -9,17 +9,19 @@ const statuses = ['scheduled', 'inProgress', 'completed'];
 const locations = ['North', 'South', 'East', 'West'];
 
 const titles = {
-    maintenance: 'Routine Maintenance',
-    pruning: 'Tree Pruning',
-    fertilizing: 'Fertilizer Distribution',
-    repair: 'System Repair',
+    maintenance: 'Irrigation System Check',
+    pruning: 'Tree Pruning Operation',
+    fertilizing: 'Fertilizer Application',
+    repair: 'Irrigation Repair',
+    inspection: 'Green Area Inspection',
 };
 
 const descriptions = {
-    maintenance: 'Scheduled maintenance for garden area.',
-    pruning: 'Pruning session to promote plant growth.',
-    fertilizing: 'Fertilizer application to nutrient-deficient areas.',
-    repair: 'Urgent repair to broken irrigation system.',
+    maintenance: `Inspect the irrigation system in the designated area. Check water pressure, detect possible leaks, ensure all sprinklers are functioning, and verify timer automation.`,
+    pruning: `Perform pruning of trees and shrubs according to seasonal guidelines. Remove dry or dangerous branches and promote healthy plant growth.`,
+    fertilizing: `Apply fertilizers to nutrient-deficient zones. Follow dosage instructions, observe plant reactions, and note any abnormal signs.`,
+    repair: `Urgently repair broken or malfunctioning irrigation components. Inspect pipes, joints, valves and replace defective parts if needed.`,
+    inspection: `Conduct a visual inspection of the green area. Assess plant condition, soil cleanliness, and watch for signs of pests or diseases.`,
 };
 
 const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -38,15 +40,15 @@ const seedActivities = async () => {
 
         const activities = [];
 
-        for (let i = 0; i < 12; i++) {
+        for (let i = 0; i < 18; i++) {
             const type = getRandom(types);
             const priority = getRandom(priorities);
-            const status = getRandom(statuses);
+            const status = i < 10 ? 'scheduled' : getRandom(statuses);
             const location = getRandom(locations);
-            const scheduledAt = generateDate(Math.floor(Math.random() * 6), 8 + (i % 5) * 2);
+            const scheduledAt = generateDate(Math.floor(Math.random() * 5), 8 + (i % 5) * 2);
 
             activities.push({
-                title: titles[type] + ` #${i + 1}`,
+                title: `${titles[type]} #${i + 1}`,
                 description: descriptions[type],
                 type,
                 priority,
@@ -57,9 +59,9 @@ const seedActivities = async () => {
         }
 
         await Activity.insertMany(activities);
-        console.log('✔️  Attività seed inserite con successo.');
+        console.log('✔️  Seed activities inserted successfully.');
     } catch (err) {
-        console.error('Errore:', err);
+        console.error('Error:', err);
     } finally {
         mongoose.disconnect();
     }

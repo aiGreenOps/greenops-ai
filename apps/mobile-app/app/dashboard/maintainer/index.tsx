@@ -7,7 +7,7 @@ import Constants from 'expo-constants';
 import { ScrollView } from 'react-native';
 
 
-const API_URL = Constants.expoConfig?.extra?.API_URL || 'http://192.168.1.183:3001';
+const API_URL = Constants.expoConfig?.extra?.API_URL || 'http://192.168.1.17:3001';
 
 type Task = {
     title: string;
@@ -19,18 +19,47 @@ type Task = {
     scheduledAt: string;
 };
 
+type FilterKey = 'All' | 'Scheduled' | 'In Progress' | 'Completed';
+
+const statusMap: Record<FilterKey, string | null> = {
+    All: null,
+    Scheduled: 'scheduled',
+    'In Progress': 'inProgress',
+    Completed: 'completed',
+};
+
 export default function ManutentoreDashboard() {
     const { user, logout } = useAuth();
 
     const fetchTasks = async () => {
-        if (!user) return;
+        const userId = user?._id || user?.userId;
+        if (!userId) {
+            console.warn('❌ Nessun ID utente disponibile, skip fetch');
+            return;
+        }
+
         try {
-            setLoading(true);
-            const res = await fetch(`${API_URL}/api/activities/mobile?userId=${user._id}`);
+
+            const res = await fetch(`${API_URL}/api/activities/mobile?userId=${userId}`);
+
+            if (!res.ok) {
+                console.error('❌ Errore HTTP:', res.status);
+                setTasks([]);
+                return;
+            }
+
             const data = await res.json();
+
+            if (!Array.isArray(data)) {
+                console.error('❌ Risposta inattesa:', data);
+                setTasks([]);
+                return;
+            }
+
             setTasks(data);
         } catch (err) {
-            console.error('Failed to fetch tasks:', err);
+            console.error('❌ Failed to fetch tasks:', err);
+            setTasks([]);
         } finally {
             setLoading(false);
         }
@@ -51,9 +80,12 @@ export default function ManutentoreDashboard() {
     const [buttonWidths, setButtonWidths] = useState<number[]>([]);
 
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
-    const filteredTasks = tasks.filter(task => activeFilter === 'All' || task.status === activeFilter.toLowerCase());
+    const filteredTasks = tasks.filter(task => {
+        const filterValue = statusMap[activeFilter as FilterKey];
+        return filterValue === null || task.status === filterValue;
+    });
     const scheduledCount = tasks.filter(t => t.status === 'scheduled').length;
     const inProgressCount = tasks.filter(t => t.status === 'inProgress').length;
 
@@ -94,8 +126,7 @@ export default function ManutentoreDashboard() {
             .replace(/^\w/, c => c.toUpperCase()); // maiuscola iniziale
 
     const handleSettings = () => {
-        // TODO: naviga alle impostazioni
-        console.log('settings...');
+        router.replace('/dashboard/maintainer/profile');
     };
 
     return (
@@ -181,12 +212,13 @@ export default function ManutentoreDashboard() {
 
                 <ScrollView style={styles.taskList} showsVerticalScrollIndicator={false}>
                     {filteredTasks.map((task, index) => (
-                        <View
+                        <TouchableOpacity
                             key={index}
                             style={[
                                 styles.taskCard,
                                 index === filteredTasks.length - 1 && { marginBottom: 0 }
                             ]}
+                            onPress={() => router.push({ pathname: '/dashboard/maintainer/task-detail', params: { task: JSON.stringify(task) } })}
                         >
                             <View style={styles.taskHeader}>
                                 <View style={styles.taskTitleGroup}>
@@ -233,7 +265,7 @@ export default function ManutentoreDashboard() {
                                     </Text>
                                 </View>
                             </View>
-                        </View>
+                        </TouchableOpacity>
                     ))}
                 </ScrollView>
             </View>

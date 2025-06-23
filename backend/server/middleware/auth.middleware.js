@@ -56,11 +56,41 @@ exports.protect = (req, res, next) => {
         req.user = {
             id: payload.userId ?? payload.id,
             role: payload.role,
-            iat: payload.iat 
+            iat: payload.iat
         };
-        
+
         return next();
     } catch (err) {
         return res.status(401).json({ error: 'Token non valido' });
+    }
+};
+
+exports.protectMaintainer = (req, res, next) => {
+    const token =
+        req.cookies.maintainerToken ||
+        (req.headers.authorization?.startsWith("Bearer ")
+            ? req.headers.authorization.split(" ")[1]
+            : null);
+
+    if (!token) {
+        return res.status(401).json({ message: "Maintainer non autenticato" });
+    }
+
+    try {
+        const payload = jwt.verify(token, jwtSecret);
+
+        if (payload.role !== "maintainer") {
+            return res.status(403).json({ message: "Accesso negato" });
+        }
+
+        req.user = {
+            id: payload.userId ?? payload.id,
+            role: payload.role,
+            iat: payload.iat,
+        };
+
+        next();
+    } catch (err) {
+        return res.status(401).json({ message: "Token maintainer non valido" });
     }
 };

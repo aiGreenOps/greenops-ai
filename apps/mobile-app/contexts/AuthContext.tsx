@@ -5,15 +5,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type User = {
     _id: string;
+    userId?: string;
     email: string;
     firstName: string;
     lastName: string;
+    phone: string,
     role: 'admin' | 'dipendente' | 'manutentore' | 'employee' | 'maintainer';
     profilePicture?: string;
 };
 
 interface AuthContextProps {
     user: User | null;
+    setUser: React.Dispatch<React.SetStateAction<User | null>>; // 👈 aggiunto
     login: (email: string, password: string) => Promise<User>;
     register: (data: {
         nome: string;
@@ -26,9 +29,10 @@ interface AuthContextProps {
     logout: () => Promise<void>;
 }
 
+
 const AuthContext = createContext<AuthContextProps>(null!);
 
-const API_URL = 'http://192.168.1.183:3001';
+const API_URL = 'http://192.168.1.17:3001';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
@@ -117,7 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, register, logout }}>
+        <AuthContext.Provider value={{ user, setUser, login, register, logout }}>
             {children}
         </AuthContext.Provider>
     );

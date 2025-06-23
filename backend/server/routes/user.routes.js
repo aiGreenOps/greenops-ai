@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { updateProfile } = require('../controllers/user.controller');
+const { updateProfile, updateOwnProfile } = require('../controllers/user.controller');
 const { protect } = require('../middleware/auth.middleware');
+const { protectAny } = require('../middleware/auth.middleware');
 const { getAllUsers } = require('../controllers/user.controller');
 
 const multer = require("multer");
@@ -23,9 +24,16 @@ const upload = multer({ storage });
 router.put(
     "/update-profile",
     protect,
-    upload.single("profilePicture"), 
+    upload.single("profilePicture"),
     updateProfile
 );
+
+router.put(
+    '/update-profile-mobile',
+    upload.single('profilePicture'),
+    updateOwnProfile
+);
+
 
 router.get('/all', protect, getAllUsers); // solo admin
 
