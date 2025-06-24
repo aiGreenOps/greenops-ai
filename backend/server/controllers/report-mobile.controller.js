@@ -1,11 +1,11 @@
 const ReportMobile = require('../models/report-mobile.model');
+const { eseguiValutazioneSegnalazioneLLM } = require("../utils/eseguiValutazioneSegnalazioneLLM");
+const Activity = require('../models/activity.model'); // assicurati di averlo importato
 
 // POST /api/report-mobile
 exports.createReport = async (req, res) => {
     try {
         const { title, description, location, priority, userId } = req.body;
-
-        // Foto caricate
         const photos = req.files?.map(file => `/uploads/${file.filename}`) || [];
 
         const report = new ReportMobile({
@@ -20,10 +20,33 @@ exports.createReport = async (req, res) => {
         });
 
         await report.save();
-        res.status(201).json(report);
+
+        // 👉 Valutazione AI
+        const utile = await eseguiValutazioneSegnalazioneLLM(report);
+
+        if (utile) {
+            const nuovaAttivita = new Activity({
+                title: report.title,
+                description: report.description,
+                type: "maintenance", // puoi derivarlo in futuro in modo dinamico se vuoi
+                priority: report.priority,
+                location: report.location,
+                scheduledAt: new Date(), // subito o decidi tu
+                generatedByAI: true
+            });
+
+            await nuovaAttivita.save();
+            report.status = 'accepted';
+        } else {
+            report.status = 'rejected';
+        }
+
+        await report.save();
+
+        res.status(201).json({ report });
     } catch (error) {
         console.error('Failed to create report:', error);
-        res.status(500).json({ message: 'Failed to create report' });
+        res.status(500).json({ message: 'Errore interno' });
     }
 };
 
