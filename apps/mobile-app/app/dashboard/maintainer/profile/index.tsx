@@ -22,7 +22,9 @@ export default function MaintainerProfile() {
     const fetchTasks = async () => {
         if (!user) return;
         try {
-            const res = await fetch(`${API_URL}/api/activities/mobile?userId=${user.userId}`);
+            const userId = user?._id || user?.userId;
+
+            const res = await fetch(`${API_URL}/api/activities/mobile?userId=${userId}`);
             const data = await res.json();
 
             const completedTasks = data.filter((task: any) => task.status === 'completed');
@@ -36,7 +38,7 @@ export default function MaintainerProfile() {
                     return sum + durationInHours;
                 }
                 return sum;
-            }, 0);            
+            }, 0);
 
             const hours = Math.round(totalHours);
 
@@ -113,20 +115,23 @@ export default function MaintainerProfile() {
     }, []);
 
     const handleAvatarPress = () => {
-        const options = ['View Photo', 'Change Photo', 'Cancel'];
-        const cancelButtonIndex = 2;
+        const options = ['View Photo', 'Change Photo', 'Delete Photo', 'Cancel'];
+        const cancelButtonIndex = 3;
 
         if (Platform.OS === 'ios') {
             ActionSheetIOS.showActionSheetWithOptions(
                 {
                     options,
                     cancelButtonIndex,
+                    destructiveButtonIndex: 2,
                 },
                 buttonIndex => {
                     if (buttonIndex === 0) {
-                        setPhotoModalVisible(true); // mostra modal
+                        setPhotoModalVisible(true);
                     } else if (buttonIndex === 1) {
                         handleChangeImage();
+                    } else if (buttonIndex === 2) {
+                        handleDeleteImage();
                     }
                 }
             );
@@ -135,14 +140,55 @@ export default function MaintainerProfile() {
                 'Profile Photo',
                 'Choose an option',
                 [
-                    { text: 'View Photo' },
+                    { text: 'View Photo', onPress: () => setPhotoModalVisible(true) },
                     { text: 'Change Photo', onPress: handleChangeImage },
+                    { text: 'Delete Photo', onPress: handleDeleteImage, style: 'destructive' },
                     { text: 'Cancel', style: 'cancel' },
                 ],
                 { cancelable: true }
             );
         }
     };
+
+    const handleDeleteImage = async () => {
+        try {
+            const formData = new FormData();
+            formData.append('userId', user._id);
+            formData.append('firstName', user.firstName);
+            formData.append('lastName', user.lastName);
+            formData.append('email', user.email);
+            formData.append('phone', user.phone || '');
+            formData.append('resetPhoto', 'true');
+
+            const token = await AsyncStorage.getItem('token');
+
+            const res = await fetch(`${API_URL}/api/user/update-profile-mobile`, {
+                method: 'PUT',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+                body: formData,
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                setUser(prev => ({
+                    ...prev!,
+                    profilePicture: data.profilePicture,
+                }));
+                setPhotoModalVisible(false);
+            } else {
+                Alert.alert('Error', data.message || 'Failed to delete photo');
+            }
+        } catch (err) {
+            console.error('❌ Failed to delete image:', err);
+            Alert.alert('Error', 'Something went wrong');
+        }
+    };
+
+
+
 
     const handleChangeImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({

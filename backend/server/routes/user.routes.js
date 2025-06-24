@@ -34,7 +34,6 @@ router.put(
     updateOwnProfile
 );
 
-
 router.get('/all', protect, getAllUsers); // solo admin
 
 module.exports = router;

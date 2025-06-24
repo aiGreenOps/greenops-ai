@@ -31,6 +31,7 @@ exports.createReport = async (req, res) => {
 exports.getReports = async (req, res) => {
     try {
         const userId = req.user._id || req.user.id;
+        console.log(userId);
 
         const reports = await ReportMobile.find({ submittedBy: userId })
             .sort({ submittedAt: -1 }) // opzionale: ordine dal più recente

@@ -54,7 +54,7 @@ export default function DipendenteDashboard() {
     const acceptedCount = reports.filter(r => r.status === 'accepted').length;
 
     const fetchReports = async () => {
-        if (!user?._id) return;
+        if (!user?._id && !user?.userId) return;
         try {
             const token = await AsyncStorage.getItem('token');
             setLoading(true);
@@ -76,6 +76,10 @@ export default function DipendenteDashboard() {
     useEffect(() => {
         fetchReports();
     }, [user?._id]);
+
+    useEffect(() => {
+        fetchReports();
+    }, []);
 
     const onFilterPress = (index: number) => {
         setActiveFilter(filters[index]);

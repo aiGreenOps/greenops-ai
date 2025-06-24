@@ -38,14 +38,13 @@ exports.updateProfile = async (req, res) => {
 };
 
 exports.updateOwnProfile = async (req, res) => {
-    // TEMP: ricevi userId dal body
     const userId = req.body.userId;
 
     if (!userId) {
         return res.status(400).json({ message: "Missing userId" });
     }
 
-    const { firstName, lastName, email, phone, fiscalCode } = req.body;
+    const { firstName, lastName, email, phone, fiscalCode, resetPhoto } = req.body;
 
     if (!firstName || !lastName || !email) {
         return res.status(400).json({ message: "First name, last name, and email are required" });
@@ -60,9 +59,15 @@ exports.updateOwnProfile = async (req, res) => {
         user.email = email;
         user.phone = phone || "";
 
+        const baseUrl = process.env.BASE_URL || "http://localhost:3001";
+
+        // ✅ Se c'è un file, aggiorna la foto
         if (req.file) {
-            const baseUrl = process.env.BASE_URL || "http://localhost:3001";
             user.profilePicture = `${baseUrl}/uploads/${req.file.filename}`;
+        }
+        // ✅ Se richiede reset, forza la foto default
+        else if (resetPhoto === 'true' || resetPhoto === true) {
+            user.profilePicture = `${baseUrl}/uploads/default-user.jpg`;
         }
 
         await user.save();
