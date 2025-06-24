@@ -24,6 +24,7 @@ const sessionRoutes = require('./routes/session.routes');
 const activityRoutes = require('./routes/activity.routes');
 const irrigationRoutes = require("./routes/irrigation.routes");
 const reportRoutes = require('./routes/reports.routes');
+const reportMobile = require('./routes/report-mobile.routes');
 
 const { eseguiRichiestaGiornalieraLLM } = require("./utils/eseguiRichiestaGiornalieraLLM");
 const { router: twoFaRouter, authenticateHandler } = require("./routes/2fa.routes");
@@ -68,6 +69,7 @@ app.use('/api/session', sessionRoutes);
 app.use('/api/activities', activityRoutes);
 app.use("/api/irrigation", irrigationRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/report-mobile', reportMobile);
 
 connectDB()
     .then(async () => {

@@ -12,7 +12,7 @@ const {
 
 router.post('/', createActivity);
 router.get('/', getAllActivities);
-router.delete('/:id', deleteActivity); // ← questo deve esserci
+router.delete('/:id', deleteActivity); 
 router.get('/mobile', getActivitiesForMaintainer);
 
 router.patch('/:activityId/accept', protectMaintainer, acceptTask);

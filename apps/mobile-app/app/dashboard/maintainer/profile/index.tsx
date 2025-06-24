@@ -22,7 +22,7 @@ export default function MaintainerProfile() {
     const fetchTasks = async () => {
         if (!user) return;
         try {
-            const res = await fetch(`${API_URL}/api/activities/mobile?userId=${user._id}`);
+            const res = await fetch(`${API_URL}/api/activities/mobile?userId=${user.userId}`);
             const data = await res.json();
 
             const completedTasks = data.filter((task: any) => task.status === 'completed');

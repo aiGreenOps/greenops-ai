@@ -94,3 +94,34 @@ exports.protectMaintainer = (req, res, next) => {
         return res.status(401).json({ message: "Token maintainer non valido" });
     }
 };
+
+
+exports.protectEmployee = (req, res, next) => {
+    const token =
+        req.cookies.employeeToken ||
+        (req.headers.authorization?.startsWith("Bearer ")
+            ? req.headers.authorization.split(" ")[1]
+            : null);
+
+    if (!token) {
+        return res.status(401).json({ message: "Employee non autenticato" });
+    }
+
+    try {
+        const payload = jwt.verify(token, jwtSecret);
+
+        if (payload.role !== "employee") {
+            return res.status(403).json({ message: "Accesso negato" });
+        }
+
+        req.user = {
+            id: payload.userId ?? payload.id,
+            role: payload.role,
+            iat: payload.iat,
+        };
+
+        next();
+    } catch (err) {
+        return res.status(401).json({ message: "Token employee non valido" });
+    }
+};

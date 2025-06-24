@@ -7,6 +7,7 @@ import { useState } from 'react';
 import PrioritySelect from '../../../components/PrioritySelect';
 import * as ImagePicker from 'expo-image-picker';
 import { Image, Alert, Platform, ActionSheetIOS, TouchableWithoutFeedback } from 'react-native';
+import { useAuth } from '../../../../contexts/AuthContext';
 
 const API_URL = Constants.expoConfig?.extra?.API_URL || 'http://192.168.1.17:3001';
 
@@ -14,7 +15,10 @@ export default function ReportAdd() {
     const [location, setLocation] = useState('');
     const [priority, setPriority] = useState('');
     const [images, setImages] = useState<string[]>([]);
+    const [title, setTitle] = useState('');
+    const [description, setDescription] = useState('');
 
+    const { user, logout } = useAuth();
 
     const handleAddPhoto = () => {
         const openCamera = async () => {
@@ -65,6 +69,56 @@ export default function ReportAdd() {
         setImages(prev => prev.filter((_, i) => i !== index));
     };
 
+    const handleSubmit = async () => {
+        if (!title || !description || !location || !priority) {
+            Alert.alert('Missing fields', 'Please fill in all required fields.');
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('description', description);
+            formData.append('location', location);
+            formData.append('priority', priority);
+            formData.append('userId', user!._id); // Inserisci lo userId corretto da AuthContext
+
+            images.forEach((uri, index) => {
+                const filename = uri.split('/').pop() || `photo${index}.jpg`;
+                const type = `image/${filename.split('.').pop()}`;
+                formData.append('photos', {
+                    uri,
+                    name: filename,
+                    type,
+                } as any);
+            });
+
+            const res = await fetch(`${API_URL}/api/report-mobile`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+                body: formData,
+            });
+
+            if (res.ok) {
+                Alert.alert('Success', 'Report sent successfully.');
+                router.replace('/dashboard/maintainer');
+            } else {
+                if (!res.ok) {
+                    const text = await res.text(); // 👈 debug!
+                    console.warn('Errore backend:', text); // logga per capire
+                    Alert.alert('Errore', 'Server error or invalid response');
+                    return;
+                }
+                const err = await res.json();
+                Alert.alert('Error', err.message || 'Failed to submit report');
+            }
+        } catch (err) {
+            console.error(err);
+            Alert.alert('Error', 'Something went wrong');
+        }
+    };
 
     return (
         <View style={styles.container}>
@@ -81,6 +135,8 @@ export default function ReportAdd() {
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Report title</Text>
                         <TextInput
+                            value={title}
+                            onChangeText={setTitle}
                             style={styles.input}
                             placeholder="e.g. Irrigator water leak"
                             placeholderTextColor="#9ca3af"
@@ -89,6 +145,8 @@ export default function ReportAdd() {
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Detailed description</Text>
                         <TextInput
+                            value={description}
+                            onChangeText={setDescription}
                             style={styles.textarea}
                             placeholder="Describe the issue in detail..."
                             placeholderTextColor="#9ca3af"
@@ -132,7 +190,7 @@ export default function ReportAdd() {
                             Maximum 4 photos. Tap to take or choose from gallery.
                         </Text>
                     </View>
-                    <TouchableOpacity style={styles.acceptButton}>
+                    <TouchableOpacity style={styles.acceptButton} onPress={handleSubmit}>
                         <Text style={styles.acceptButtonText}>Send report</Text>
                     </TouchableOpacity>
                 </ScrollView>
