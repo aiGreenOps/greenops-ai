@@ -159,48 +159,77 @@ export default function UserDashboardPage() {
         }
         fetchStations();
 
+        // STREAMING STATICO
+
         async function fetchStreamingReport() {
             if (hasStarted.current) return; // blocca se già partito
             hasStarted.current = true;
 
-            try {
-                const res = await fetch("http://localhost:3001/api/ai/response", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        messaggio: "Cosa suggerisce l'AI per oggi?",
-                        posizione: { lat: 40.9, lon: 17.3 }
-                    }),
-                });
+            const messaggioDemo = `Le condizioni del verde aziendale sono generalmente sfavorevoli. La temperatura è elevata, potenzialmente stressante per le piante. Il livello di umidità basso non aiuta a mantenere l'equilibrio idrico nelle piante, rendendo questo un fattore da tenere sotto controllo. La luminosità è bassa, che potrebbe causare una deficienza di luce nei giorni seguenti se il sole non splende abbastanza nel futuro. Non si prevedono precipitazioni entro le prossime 105 ore.`;
 
-                if (!res.ok || !res.body) {
-                    throw new Error("Risposta non valida dal server.");
+            const delay = (ms: number) => new Promise<void>(res => setTimeout(res, ms));
+            const chunks = messaggioDemo.split(" "); // simuliamo parola per parola
+            let fullText = "";
+            let firstChunk = true;
+
+            for (let i = 0; i < chunks.length; i++) {
+                await delay(150); // Simula ritardo tra chunk (puoi aumentare o diminuire)
+
+                fullText += chunks[i] + " ";
+
+                if (firstChunk) {
+                    setLoading(false);
+                    firstChunk = false;
                 }
 
-                const reader = res.body.getReader();
-                const decoder = new TextDecoder();
-                let firstChunk = true;
-                let fullText = "";
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    let chunk = decoder.decode(value, { stream: true });
-                    if (firstChunk) {
-                        chunk = chunk.replace(/^\s+/, "");
-                        setLoading(false);
-                        firstChunk = false;
-                    }
-                    fullText += chunk;
-                    setAiMessage(fullText);
-                }
-
-            } catch (err) {
-                console.error("❌ Errore AI stream:", err);
-                setAiMessage("❌ Errore durante la generazione del report.");
+                setAiMessage(fullText);
             }
         }
+
+        // STREAMING AI
+
+        // async function fetchStreamingReport() {
+        //     if (hasStarted.current) return; // blocca se già partito
+        //     hasStarted.current = true;
+
+        //     try {
+        //         const res = await fetch("http://localhost:3001/api/ai/response", {
+        //             method: "POST",
+        //             headers: { "Content-Type": "application/json" },
+        //             body: JSON.stringify({
+        //                 messaggio: "Cosa suggerisce l'AI per oggi?",
+        //                 posizione: { lat: 40.9, lon: 17.3 }
+        //             }),
+        //         });
+
+        //         if (!res.ok || !res.body) {
+        //             throw new Error("Risposta non valida dal server.");
+        //         }
+
+        //         const reader = res.body.getReader();
+        //         const decoder = new TextDecoder();
+        //         let firstChunk = true;
+        //         let fullText = "";
+
+        //         while (true) {
+        //             const { done, value } = await reader.read();
+        //             if (done) break;
+
+        //             let chunk = decoder.decode(value, { stream: true });
+        //             if (firstChunk) {
+        //                 chunk = chunk.replace(/^\s+/, "");
+        //                 setLoading(false);
+        //                 firstChunk = false;
+        //             }
+        //             fullText += chunk;
+        //             setAiMessage(fullText);
+        //         }
+
+        //     } catch (err) {
+        //         console.error("❌ Errore AI stream:", err);
+        //         setAiMessage("❌ Errore durante la generazione del report.");
+        //     }
+        // }
 
         fetchStreamingReport();
 

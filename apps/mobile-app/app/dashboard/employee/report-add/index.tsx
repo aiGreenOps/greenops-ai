@@ -9,7 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Image, Alert, Platform, ActionSheetIOS, TouchableWithoutFeedback } from 'react-native';
 import { useAuth } from '../../../../contexts/AuthContext';
 
-const API_URL = Constants.expoConfig?.extra?.API_URL || 'http://192.168.1.17:3001';
+const API_URL = Constants.expoConfig?.extra?.API_URL || 'http://172.20.10.3:3001';
 
 export default function ReportAdd() {
     const [location, setLocation] = useState('');
@@ -81,7 +81,9 @@ export default function ReportAdd() {
             formData.append('description', description);
             formData.append('location', location);
             formData.append('priority', priority);
-            formData.append('userId', user!._id); // Inserisci lo userId corretto da AuthContext
+            const userId = user?._id || user?.userId;
+            formData.append('userId', userId!);
+
 
             images.forEach((uri, index) => {
                 const filename = uri.split('/').pop() || `photo${index}.jpg`;

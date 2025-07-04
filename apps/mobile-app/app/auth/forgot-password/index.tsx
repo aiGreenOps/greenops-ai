@@ -3,9 +3,12 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingVi
 import { PanGestureHandler, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { GestureEvent, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 import { router } from 'expo-router';
+import Constants from 'expo-constants';
 
 const SWIPE_THRESHOLD = 80;
 const { width, height } = Dimensions.get('window');
+
+const API_URL = Constants.expoConfig?.extra?.API_URL || 'http://172.20.10.3:30';
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('');
@@ -52,7 +55,7 @@ export default function ForgotPasswordPage() {
                                         if (!email) return Alert.alert("Error", "Please enter a valid email.");
                                         setLoading(true);
                                         try {
-                                            const res = await fetch(`http://192.168.1.183:3001/api/auth/forgot-password`, {
+                                            const res = await fetch(`${API_URL}/api/auth/forgot-password`, {
                                                 method: "POST",
                                                 headers: { "Content-Type": "application/json" },
                                                 body: JSON.stringify({ email }),

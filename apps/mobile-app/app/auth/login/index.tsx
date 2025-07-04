@@ -16,6 +16,7 @@ import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { AntDesign, FontAwesome, FontAwesome5 } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 
 const { width, height } = Dimensions.get('window');
 

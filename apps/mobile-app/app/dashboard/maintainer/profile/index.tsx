@@ -86,7 +86,7 @@ export default function MaintainerProfile() {
         );
     }
 
-    const API_URL = Constants.expoConfig?.extra?.API_URL || 'http://192.168.1.17:3001';
+    const API_URL = Constants.expoConfig?.extra?.API_URL || 'http://172.20.10.3:3001';
 
     const resolvedImage = user?.profilePicture?.replace('http://localhost:3001', API_URL);
 

@@ -130,6 +130,8 @@ export default function MapViewDashboardPage() {
         }
     };
 
+    //STREAMING STATICO
+
     const handleAskGreenOpsAI = async () => {
         if (!selectedStation) return;
 
@@ -142,26 +144,34 @@ export default function MapViewDashboardPage() {
         setLoading(true);
         setShowAIReportPopup(true);
 
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/api/ai/greenops-analysis`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(selectedStation)
-        });
+        // ✅ Risposta statica per la demo (con tag)
+        const fakeResponse = `Analisi dell'area verde: La posizione è Taranto, Puglia, Italia, il giorno è martedì 8 luglio 2025 durante la stagione estiva. Nell'area si trovano piante di ulivi che appaiono in stato di salute ottimale (healthy).
+    
+I sensori riportano le seguenti condizioni:
+- Temperatura: 32,1°C
+- Umidità aria: 40%
+- Umidità terreno: 16%
+- Luminosità: 74 lux
+    
+Gli ultimi interventi eseguiti sono l'irrigazione eseguita oggi, la potatura l'8 giugno 2023 e la fertilizzazione lo stesso giorno. La previsione meteorologica prevede una mancanza di pioggia per le prossime 105 ore.
+    
+Considerando i dati forniti, in base alle linee guida per piante comuni, i tipi di intervento per ulivi, prato, siepi e aiuole non sono necessari al momento. Tuttavia, tenendo conto della temperatura e dell'umidità del terreno, è necessario attenersi alla frequenza delle irrigazioni in base alle condizioni ambientali.
+    
+<title>Controllo irrigazione straordinaria</title>
+<description>Verificare che le condizioni di umidità nel terreno rimangano stabili nelle prossime ore. Programmare un'irrigazione se il valore scende sotto la soglia critica.</description>
+<type>maintenance</type>`;
 
-        const reader = res.body?.getReader();
-        const decoder = new TextDecoder();
+        // ✅ Simula streaming
+        const delay = (ms: number) => new Promise<void>(res => setTimeout(res, ms));
+        const chunks = fakeResponse.split(" "); // puoi fare anche per frase con `.split('. ')`
         let fullText = "";
-
-        if (!reader) return;
-
         let foundTags = false;
         let firstChunkReceived = false;
 
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+        for (let i = 0; i < chunks.length; i++) {
+            await delay(80); // personalizzabile
 
-            const chunk = decoder.decode(value);
+            const chunk = chunks[i] + " ";
             fullText += chunk;
 
             if (!firstChunkReceived) {
@@ -171,25 +181,19 @@ export default function MapViewDashboardPage() {
 
             if (!foundTags) {
                 const tagIndex = chunk.indexOf("<");
-
                 if (tagIndex === -1) {
-                    // Nessun tag: mostra tutto il chunk
                     setAiChunks(prev => prev + chunk);
                 } else {
-                    // Tag trovato a metà chunk
-                    const visible = chunk.slice(0, tagIndex);
-                    const hidden = chunk.slice(tagIndex);
-
-                    setAiChunks(prev => prev + visible);       // Mostra solo prima del tag
-                    setHiddenChunks(prev => prev + hidden);    // Nasconde il resto
-                    foundTags = true;                          // ❗ Blocca da qui in poi
+                    setAiChunks(prev => prev + chunk.slice(0, tagIndex));
+                    setHiddenChunks(prev => prev + chunk.slice(tagIndex));
+                    foundTags = true;
                 }
             } else {
-                // Dopo aver trovato un tag → tutto va nei chunk nascosti
                 setHiddenChunks(prev => prev + chunk);
             }
         }
 
+        // ✅ Estrai i tag al termine
         const titleMatch = fullText.match(/<title>(.*?)<\/title>/i);
         const descMatch = fullText.match(/<description>(.*?)<\/description>/i);
         const typeMatch = fullText.match(/<type>(.*?)<\/type>/i);
@@ -207,8 +211,90 @@ export default function MapViewDashboardPage() {
                 setSuggestedType("");
             }
         }
-
     };
+
+
+    // STREAMING AI
+
+    // const handleAskGreenOpsAI = async () => {
+    //     if (!selectedStation) return;
+
+    //     setAiChunks("");
+    //     setHiddenChunks("");
+    //     setSuggestedTitle("");
+    //     setSuggestedDescription("");
+    //     setSuggestedType("");
+    //     setFoundTags(false);
+    //     setLoading(true);
+    //     setShowAIReportPopup(true);
+
+    //     const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/api/ai/greenops-analysis`, {
+    //         method: "POST",
+    //         headers: { "Content-Type": "application/json" },
+    //         body: JSON.stringify(selectedStation)
+    //     });
+
+    //     const reader = res.body?.getReader();
+    //     const decoder = new TextDecoder();
+    //     let fullText = "";
+
+    //     if (!reader) return;
+
+    //     let foundTags = false;
+    //     let firstChunkReceived = false;
+
+    //     while (true) {
+    //         const { done, value } = await reader.read();
+    //         if (done) break;
+
+    //         const chunk = decoder.decode(value);
+    //         fullText += chunk;
+
+    //         if (!firstChunkReceived) {
+    //             setLoading(false);
+    //             firstChunkReceived = true;
+    //         }
+
+    //         if (!foundTags) {
+    //             const tagIndex = chunk.indexOf("<");
+
+    //             if (tagIndex === -1) {
+    //                 // Nessun tag: mostra tutto il chunk
+    //                 setAiChunks(prev => prev + chunk);
+    //             } else {
+    //                 // Tag trovato a metà chunk
+    //                 const visible = chunk.slice(0, tagIndex);
+    //                 const hidden = chunk.slice(tagIndex);
+
+    //                 setAiChunks(prev => prev + visible);       // Mostra solo prima del tag
+    //                 setHiddenChunks(prev => prev + hidden);    // Nasconde il resto
+    //                 foundTags = true;                          // ❗ Blocca da qui in poi
+    //             }
+    //         } else {
+    //             // Dopo aver trovato un tag → tutto va nei chunk nascosti
+    //             setHiddenChunks(prev => prev + chunk);
+    //         }
+    //     }
+
+    //     const titleMatch = fullText.match(/<title>(.*?)<\/title>/i);
+    //     const descMatch = fullText.match(/<description>(.*?)<\/description>/i);
+    //     const typeMatch = fullText.match(/<type>(.*?)<\/type>/i);
+
+    //     if (titleMatch) setSuggestedTitle(titleMatch[1].trim());
+    //     if (descMatch) setSuggestedDescription(descMatch[1].trim());
+
+    //     if (typeMatch) {
+    //         const type = typeMatch[1].trim().toLowerCase();
+    //         const validTypes = ["maintenance", "pruning", "fertilizing", "repair"];
+    //         if (validTypes.includes(type)) {
+    //             setSuggestedType(type);
+    //         } else {
+    //             console.warn("❌ Tipo non valido ricevuto:", type);
+    //             setSuggestedType("");
+    //         }
+    //     }
+
+    // };
 
 
 

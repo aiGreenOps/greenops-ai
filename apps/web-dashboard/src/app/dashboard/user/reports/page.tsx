@@ -173,7 +173,15 @@ export default function ReportsDashboardPage() {
                         </p>
                         <p className={styles.textFormat}>XLSX</p>
                         <div className={styles.btnContainer}>
-                            <button className={styles.actions}>Download</button>
+                            <button
+                                className={styles.actions}
+                                onClick={() => {
+                                    const url = `${process.env.NEXT_PUBLIC_API_BASE}/api/reports/segnalazioni-excel?location=${locationFilter}&duration=${durationFilter}`;
+                                    window.open(url, "_blank");
+                                }}
+                            >
+                                Download
+                            </button>
                         </div>
                     </div>
                 </div>

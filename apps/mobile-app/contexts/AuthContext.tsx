@@ -2,6 +2,8 @@
 
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+
 
 export type User = {
     _id: string;
@@ -32,7 +34,7 @@ interface AuthContextProps {
 
 const AuthContext = createContext<AuthContextProps>(null!);
 
-const API_URL = 'http://192.168.1.17:3001';
+const API_URL = Constants.expoConfig?.extra?.API_URL || 'http://172.20.10.3:30';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);

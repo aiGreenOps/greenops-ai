@@ -17,7 +17,7 @@ type Report = {
     _id: string;
 };
 
-const API_URL = Constants.expoConfig?.extra?.API_URL || 'http://192.168.1.17:3001';
+const API_URL = Constants.expoConfig?.extra?.API_URL || 'http://172.20.10.3:3001';
 
 export default function ReportDetail() {
     const { report } = useLocalSearchParams();

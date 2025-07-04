@@ -1,14 +1,17 @@
 const Station = require('../models/station.model');
 const Sensor = require('../models/sensorData.model');
+const ReportMobile = require('../models/report-mobile.model');
 const Irrigation = require('../models/irrigation.model');
 const PDFDocument = require('pdfkit');
 const ExcelJS = require('exceljs');
 const moment = require('moment');
 const Activity = require('../models/activity.model');
+const fs = require('fs');
+const path = require('path');
 
 
 exports.generateActivityExcel = async (req, res) => {
-    const { location = 'all', duration = 'week' } = req.query;
+    let { location = 'all', duration = 'week' } = req.query;
 
     const today = moment();
     let fromDate;
@@ -283,5 +286,107 @@ exports.getSummaryData = async (req, res) => {
     } catch (error) {
         console.error("Errore summary report:", error);
         res.status(500).json({ message: "Errore generazione report." });
+    }
+};
+
+exports.generateSegnalazioniExcel = async (req, res) => {
+    const { location = 'all', duration = 'week' } = req.query;
+
+    const today = moment();
+    let fromDate;
+
+    switch (duration) {
+        case 'day':
+            fromDate = today.clone().startOf('day');
+            break;
+        case 'month':
+            fromDate = today.clone().startOf('month');
+            break;
+        case 'week':
+        default:
+            fromDate = today.clone().startOf('isoWeek');
+            break;
+    }
+
+    const locationFilter = location !== 'all' ? { location } : {};
+
+    try {
+        const segnalazioni = await ReportMobile.find({
+            submittedAt: { $gte: fromDate.toDate(), $lte: today.toDate() },
+            ...locationFilter
+        }).populate('submittedBy', 'email');
+
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('Employee Reports');
+
+        sheet.columns = [
+            { header: 'Title', key: 'title', width: 30 },
+            { header: 'Description', key: 'description', width: 40 },
+            { header: 'Location', key: 'location', width: 15 },
+            { header: 'Priority', key: 'priority', width: 10 },
+            { header: 'Status', key: 'status', width: 12 },
+            { header: 'Submitted By', key: 'submittedBy', width: 25 },
+            { header: 'Submitted At', key: 'submittedAt', width: 22 },
+            { header: 'Photo 1', key: 'photo1', width: 15 },
+            { header: 'Photo 2', key: 'photo2', width: 15 },
+            { header: 'Photo 3', key: 'photo3', width: 15 },
+            { header: 'Photo 4', key: 'photo4', width: 15 }
+        ];
+
+        let rowIndex = 2;
+
+        for (const report of segnalazioni) {
+            sheet.addRow({
+                title: report.title,
+                description: report.description,
+                location: report.location,
+                priority: report.priority,
+                status: report.status,
+                submittedBy: report.submittedBy?.email || 'unknown',
+                submittedAt: moment(report.submittedAt).format('YYYY-MM-DD HH:mm'),
+                photo1: '',
+                photo2: '',
+                photo3: '',
+                photo4: ''
+            });
+
+            const photos = (report.photos || []).slice(0, 4);
+
+            photos.forEach((relativePath, i) => {
+                const sanitizedPath = relativePath.replace(/^\/+/, ''); // rimuove / iniziale
+                const absolutePath = path.join(__dirname, '..', '..', 'server', 'public', sanitizedPath);
+                console.log("📸 Absolute image path:", absolutePath);
+                if (fs.existsSync(absolutePath)) {
+                    const ext = path.extname(absolutePath).substring(1); // jpg / png
+                    const imageId = workbook.addImage({
+                        filename: absolutePath,
+                        extension: ext
+                    });
+
+                    sheet.addImage(imageId, {
+                        tl: { col: 7 + i, row: rowIndex - 1 }, // col 7=H, 8=I, 9=J, 10=K
+                        ext: { width: 90, height: 90 }
+                    });
+                }
+            });
+
+            sheet.getRow(rowIndex).height = 80;
+            rowIndex++;
+        }
+
+        res.setHeader(
+            'Content-Disposition',
+            `attachment; filename=${duration}_employee_reports.xlsx`
+        );
+        res.setHeader(
+            'Content-Type',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        );
+
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (err) {
+        console.error("❌ Errore generazione Excel segnalazioni:", err);
+        res.status(500).json({ message: 'Errore generazione report segnalazioni.' });
     }
 };

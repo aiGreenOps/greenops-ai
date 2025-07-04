@@ -7,7 +7,7 @@ import AiAssistantModal from '../../../components/AiAssistantModal';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = Constants.expoConfig?.extra?.API_URL || 'http://192.168.1.17:3001';
+const API_URL = Constants.expoConfig?.extra?.API_URL || 'http://172.20.10.3:3001';
 
 export default function TaskDetail() {
     const { task } = useLocalSearchParams();

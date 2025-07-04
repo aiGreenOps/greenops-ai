@@ -30,14 +30,15 @@ export default function MaintainerProfile() {
         );
     }
 
-    const API_URL = Constants.expoConfig?.extra?.API_URL || 'http://192.168.1.17:3001';
+    const API_URL = Constants.expoConfig?.extra?.API_URL || 'http://172.20.10.3:3001';
 
     const resolvedImage = user?.profilePicture?.replace('http://localhost:3001', API_URL);
 
     const [countDone, setCountDone] = useState(0);
+    const [countAccepted, setCountAccepted] = useState(0);
     const animDone = useRef(new Animated.Value(0)).current;
-    const [hoursWorked, setHoursWorked] = useState(0);
-    const animHours = useRef(new Animated.Value(0)).current;
+    const animReportsSent = useRef(new Animated.Value(0)).current;
+    const animReportsAccepted = useRef(new Animated.Value(0)).current;
 
     const rating = 4.8;
     const maxStars = 5;
@@ -57,6 +58,56 @@ export default function MaintainerProfile() {
             }).start();
         });
     }, []);
+
+    useEffect(() => {
+        const fetchReports = async () => {
+            try {
+                const token = await AsyncStorage.getItem('token');
+                const res = await fetch(`${API_URL}/api/report-mobile`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                if (!res.ok) throw new Error('Errore nel recupero dei report');
+
+                const data = await res.json();
+                const sentCount = data.length;
+                const acceptedCount = data.filter((report: { status: string }) => report.status === 'accepted').length;
+
+                // Avvia animazione
+                Animated.timing(animReportsSent, {
+                    toValue: sentCount,
+                    duration: 1000,
+                    useNativeDriver: false,
+                    easing: Easing.out(Easing.quad),
+                }).start();
+
+                Animated.timing(animReportsAccepted, {
+                    toValue: acceptedCount,
+                    duration: 1000,
+                    useNativeDriver: false,
+                    easing: Easing.out(Easing.quad),
+                }).start();
+
+                const id1 = animReportsSent.addListener(({ value }) => setCountDone(Math.floor(value)));
+                const id2 = animReportsAccepted.addListener(({ value }) => setCountAccepted(Math.floor(value)));
+
+                return () => {
+                    animReportsSent.removeListener(id1);
+                    animReportsAccepted.removeListener(id2);
+                };
+            } catch (error) {
+                console.error('❌ Errore nel caricamento dei report:', error);
+            }
+        };
+
+        if (user?._id || user?.userId) {
+            fetchReports();
+        }
+    }, [user]);
+
+
 
     const handleAvatarPress = () => {
         const options = ['View Photo', 'Change Photo', 'Delete Photo', 'Cancel'];
@@ -264,16 +315,18 @@ export default function MaintainerProfile() {
                         <Feather name="message-square" style={styles.iconCardBlue} size={20} />
                         <View style={styles.textCard}>
                             <Text style={styles.statLabel}>Reports Sent</Text>
-                            <Text style={styles.statValue}>{countDone}</Text>
+                            <Animated.Text style={styles.statValue}>
+                                {Math.floor(countDone)}
+                            </Animated.Text>
                         </View>
                     </View>
                     <View style={styles.statCard}>
                         <Feather name="check-circle" style={styles.iconCardGreen} size={20} />
                         <View style={styles.textCard}>
                             <Text style={styles.statLabel}>Reports Accepted</Text>
-                            <Text style={styles.statValue}>
-                                0
-                            </Text>
+                            <Animated.Text style={styles.statValue}>
+                                {Math.floor(countAccepted)}
+                            </Animated.Text>
                         </View>
                     </View>
                 </View>

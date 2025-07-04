@@ -6,6 +6,7 @@ const Activity = require('../models/activity.model'); // assicurati di averlo im
 exports.createReport = async (req, res) => {
     try {
         const { title, description, location, priority, userId } = req.body;
+        console.log(req.body);
         const photos = req.files?.map(file => `/uploads/${file.filename}`) || [];
 
         const report = new ReportMobile({
