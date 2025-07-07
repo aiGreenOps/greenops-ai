@@ -29,11 +29,11 @@
 
 Per avviare il progetto GreenOps AI è necessario eseguire separatamente i tre moduli principali: backend, frontend e applicazione mobile.
 
-Per avviare il backend, spostarsi nella cartella `backend/server`, installare le dipendenze con `npm install` ed eseguire il server con `npm run dev`.
+Per avviare il backend, spostarsi nella cartella `backend/server` ed eseguire il server con `npm run dev`.
 
-Per avviare il frontend web, spostarsi nella cartella `apps/web-dashboard`, installare le dipendenze con `npm install` ed eseguire l’applicazione con `npm run dev`.
+Per avviare il frontend web, spostarsi nella cartella `apps/web-dashboard` ed eseguire l’applicazione con `npm run dev`.
 
-Per avviare l’app mobile, spostarsi nella cartella `apps/mobile-app`, installare le dipendenze con `npm install` ed eseguire l’app con `npx expo start`.
+Per avviare l’app mobile, spostarsi nella cartella `apps/mobile-app` ed eseguire l’app con `npx expo start`.
 
 Assicurarsi che il backend sia attivo e accessibile dalla rete locale per permettere la corretta comunicazione con frontend e mobile.
 
